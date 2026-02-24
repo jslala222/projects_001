@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git config user.email \"jslala222@gmail.com\")",
+      "Bash(git config user.name \"jslala222\")",
+      "Bash(git remote add origin https://github.com/jslala222/projects_001.git)",
+      "Bash(git add .)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
