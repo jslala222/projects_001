@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bkit-dark: #0f172a; /* slate-900 */
+  --color-bkit-surface: #1e293b; /* slate-800 */
+  --color-bkit-primary: #3b82f6; /* blue-500 */
+  --color-bkit-text: #f8fafc; /* slate-50 */
+  --color-bkit-muted: #94a3b8; /* slate-400 */
+}
+
+@layer base {
+  body {
+    background-color: var(--color-bkit-dark);
+    color: var(--color-bkit-text);
+  }
+}

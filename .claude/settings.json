@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(nvm use 24.13.0)",
+      "Bash(npm run dev)",
+      "Read(//c/Users/User/**)",
+      "Bash(taskkill /F /PID 3964)"
+    ]
+  }
+}
