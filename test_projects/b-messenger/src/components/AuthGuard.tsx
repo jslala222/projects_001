@@ -12,7 +12,7 @@ import { useAuth } from "@/components/AuthContext";
 const publicPaths = ["/login"];
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin, userStatus, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -62,6 +62,35 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // 로그인 + 공개 페이지 → 아무것도 안 보여줌 (리다이렉트 대기)
   if (user && isPublicPage) return null;
+
+  // 로그인 상태인데 승인 대기 중인 경우 (관리자는 예외)
+  if (user && userStatus === "pending" && !isAdmin && !isPublicPage) {
+    return (
+      <div style={{
+        minHeight: "100vh", display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        background: "linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 50%, #0a0a1a 100%)",
+        gap: 16, textAlign: "center", padding: 24, zIndex: 9999, position: "relative"
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 8 }}>⏳</div>
+        <h2 style={{ fontSize: 24, fontWeight: 700 }}>가입 승인 대기 중</h2>
+        <p style={{ color: "var(--text-secondary)", maxWidth: 400, lineHeight: 1.6 }}>
+          관리자의 승인 이후에 서비스 무단 이용 및 발송이 가능합니다.<br/>
+          승인 처리를 기다려주세요.
+        </p>
+        <button 
+          className="btn btn-secondary" 
+          onClick={async () => {
+            await signOut();
+            router.replace("/login");
+          }}
+          style={{ marginTop: 16 }}
+        >
+          돌아가기 (로그아웃)
+        </button>
+      </div>
+    );
+  }
 
   return <>{children}</>;
 }

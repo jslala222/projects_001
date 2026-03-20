@@ -16,9 +16,11 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;         // 관리자 여부
   userStatus: string;       // 승인 상태 (pending/approved/rejected)
+  plan: string;             // 요금제 (free/pro/enterprise)
   signUp: (email: string, password: string, name: string, phone: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>; // 프로필 강제 갱신 함수 추가
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,6 +32,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userStatus, setUserStatus] = useState("pending");
+  const [plan, setPlan] = useState("free");
+
+  // 프로필 정보(role, status, plan) 가져오는 함수
+  async function fetchProfile(userId: string) {
+    const { data: profile } = await supabase
+      .from("b-messenger_users")
+      .select("role, status, plan")
+      .eq("id", userId)
+      .single();
+    if (profile) {
+      setIsAdmin(profile.role === "admin");
+      setUserStatus(profile.status || "pending");
+      setPlan(profile.plan || "free");
+      return profile;
+    }
+    return null;
+  }
 
   // 앱 시작 시 기존 세션 확인
   useEffect(() => {
@@ -37,17 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
-      // DB에서 role/status 조회
       if (currentSession?.user) {
-        const { data: profile } = await supabase
-          .from("b-messenger_users")
-          .select("role, status")
-          .eq("id", currentSession.user.id)
-          .single();
-        if (profile) {
-          setIsAdmin(profile.role === "admin");
-          setUserStatus(profile.status || "pending");
-        }
+        await fetchProfile(currentSession.user.id);
       }
       setLoading(false);
     }
@@ -55,9 +65,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // 인증 상태 변화 감지 (로그인/로그아웃)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
+      async (_event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
+        if (newSession?.user) {
+          await fetchProfile(newSession.user.id);
+        } else {
+          setIsAdmin(false);
+          setUserStatus("pending");
+        }
         setLoading(false);
       }
     );
@@ -123,10 +139,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setIsAdmin(false);
     setUserStatus("pending");
+    setPlan("free");
+  }
+
+  async function refreshProfile() {
+    if (user) await fetchProfile(user.id);
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, isAdmin, userStatus, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, isAdmin, userStatus, plan, signUp, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

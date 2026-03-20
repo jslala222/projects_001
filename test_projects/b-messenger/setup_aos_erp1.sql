@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS "b-messenger_contacts" (
   memo TEXT DEFAULT '',
   group_ids TEXT[] DEFAULT '{}',
   is_kakao_friend BOOLEAN DEFAULT FALSE,
+  is_customer BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

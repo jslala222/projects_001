@@ -98,6 +98,17 @@
   color: var(--text-primary);
 }
 
+.navLinkLocked {
+  opacity: 0.5;
+  cursor: pointer;
+  filter: grayscale(1);
+}
+
+.navLinkLocked:hover {
+  background: rgba(248, 113, 113, 0.05);
+  color: #f87171;
+}
+
 .navLinkActive::before {
   content: '';
   position: absolute;

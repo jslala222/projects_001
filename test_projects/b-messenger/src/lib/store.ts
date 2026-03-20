@@ -14,6 +14,7 @@ export interface Contact {
   memo: string;
   groupIds: string[];
   isKakaoFriend: boolean;
+  isCustomer: boolean;
   createdAt: string;
 }
 
@@ -123,6 +124,7 @@ function dbToContact(row: Record<string, unknown>): Contact {
     memo: (row.memo as string) || "",
     groupIds: (row.group_ids as string[]) || [],
     isKakaoFriend: (row.is_kakao_friend as boolean) || false,
+    isCustomer: (row.is_customer as boolean) || false,
     createdAt: row.created_at as string,
   };
 }
@@ -172,13 +174,18 @@ function dbToCampaign(row: Record<string, unknown>): Campaign {
 // ── Supabase 데이터 스토어 ──
 class DataStore {
   // ── 연락처 ──
-  async getContacts(): Promise<Contact[]> {
+  async getContacts(onlyCustomers: boolean = false): Promise<Contact[]> {
     const tenantId = await getTenantId();
-    const { data, error } = await supabase
+    let q = supabase
       .from(TABLES.CONTACTS)
       .select("*")
-      .eq("tenant_id", tenantId)
-      .order("created_at", { ascending: false });
+      .eq("tenant_id", tenantId);
+
+    if (onlyCustomers) {
+      q = q.eq("is_customer", true);
+    }
+
+    const { data, error } = await q.order("created_at", { ascending: false });
 
     if (error) { console.error("연락처 조회 오류:", error); return []; }
     return (data || []).map(dbToContact);
@@ -208,6 +215,7 @@ class DataStore {
         memo: data.memo,
         group_ids: data.groupIds,
         is_kakao_friend: data.isKakaoFriend,
+        is_customer: data.isCustomer || false,
       })
       .select()
       .single();
@@ -225,6 +233,7 @@ class DataStore {
       memo: d.memo,
       group_ids: d.groupIds,
       is_kakao_friend: d.isKakaoFriend,
+      is_customer: d.isCustomer || false,
     }));
 
     const { data, error } = await supabase
@@ -243,6 +252,7 @@ class DataStore {
     if (data.memo !== undefined) updateData.memo = data.memo;
     if (data.groupIds !== undefined) updateData.group_ids = data.groupIds;
     if (data.isKakaoFriend !== undefined) updateData.is_kakao_friend = data.isKakaoFriend;
+    if (data.isCustomer !== undefined) updateData.is_customer = data.isCustomer;
 
     const { data: updated, error } = await supabase
       .from(TABLES.CONTACTS)
@@ -262,6 +272,16 @@ class DataStore {
       .eq("id", id);
 
     if (error) { console.error("연락처 삭제 오류:", error); return false; }
+    return true;
+  }
+
+  async toggleCustomerStatus(id: string, isCustomer: boolean): Promise<boolean> {
+    const { error } = await supabase
+      .from(TABLES.CONTACTS)
+      .update({ is_customer: isCustomer })
+      .eq("id", id);
+
+    if (error) { console.error("고객 상태 변경 오류:", error); return false; }
     return true;
   }
 
@@ -304,6 +324,19 @@ class DataStore {
 
     if (error) { console.error("그룹 삭제 오류:", error); return false; }
     return true;
+  }
+
+  async updateGroup(id: string, color: string): Promise<Group | null> {
+    const { data: updated, error } = await supabase
+      .from(TABLES.GROUPS)
+      .update({ color })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) { console.error("그룹 수정 오류:", error); return null; }
+    // 연락처 수는 UI의 refresh()에서 다시 계산되므로 임시로 0 반환
+    return dbToGroup(updated, 0);
   }
 
   // ── 템플릿 ──
@@ -452,6 +485,8 @@ class DataStore {
     const apiSettings = await this.getApiSettings();
     const activeSetting = apiSettings.find(s => s.isActive);
 
+    const campaign = await this.getCampaign(campaignId);
+
     let success = 0;
     let fail = 0;
 
@@ -461,8 +496,15 @@ class DataStore {
       let channelUsed = "sms";
       let errorMessage: string | undefined;
 
+      let personalizedMessage = campaign?.message || "";
+      if (campaign) {
+        personalizedMessage = personalizedMessage.replace(/#{이름}/g, contact.name);
+        personalizedMessage = personalizedMessage.replace(/#{메모}/g, contact.memo || "");
+        personalizedMessage = personalizedMessage.replace(/#{전화번호}/g, contact.phone);
+      }
+
       // 솔라피 API가 활성화되어 있으면 실제 발송
-      if (activeSetting && activeSetting.apiKey && activeSetting.apiSecret) {
+      if (activeSetting && activeSetting.isActive) {
         try {
           const solapiConfig: SolapiConfig = {
             apiKey: activeSetting.apiKey,
@@ -472,11 +514,8 @@ class DataStore {
           };
           const client = createSolapiClient(solapiConfig);
 
-          const campaign = await this.getCampaign(campaignId);
-          if (campaign) {
-            await sendByChannel(client, campaign.channel, contact.phone, campaign.message);
-            channelUsed = campaign.channel;
-          }
+          await sendByChannel(client, campaign!.channel, contact.phone, personalizedMessage);
+          channelUsed = campaign!.channel;
           status = "sent";
           success++;
         } catch (err) {
@@ -504,6 +543,7 @@ class DataStore {
         contact_id: contact.id,
         contact_name: contact.name,
         contact_phone: contact.phone,
+        message: personalizedMessage, // 새로 추가할 컬럼
         status,
         channel_used: channelUsed,
         error_message: errorMessage,

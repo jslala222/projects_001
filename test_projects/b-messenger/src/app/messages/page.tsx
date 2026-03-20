@@ -18,6 +18,7 @@ const channels = [
 export default function MessagesPage() {
   const [selectedChannel, setSelectedChannel] = useState("kakao_friend");
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [onlyCustomers, setOnlyCustomers] = useState(false);
   const [message, setMessage] = useState("#{이름}님 안녕하세요! 🌸\n\n3월 봄맞이 특별 할인 이벤트를 안내드립니다.\n\n전 품목 20% 할인 진행 중!\n지금 바로 확인해보세요 👇");
   const [fallbackEnabled, setFallbackEnabled] = useState(true);
   const [sendRate, setSendRate] = useState(300);
@@ -40,18 +41,44 @@ export default function MessagesPage() {
     load();
   }, []);
 
-  // 선택된 그룹의 연락처
-  const targetContacts = selectedGroups.length > 0
-    ? contacts.filter(c => c.groupIds.some(g => selectedGroups.includes(g)))
-    : contacts;
+  // 선택된 그룹 및 고객 여부에 따른 연락처 추출
+  const targetContacts = (() => {
+    let filtered = contacts;
+    
+    // 1. 고객 전용 필터 적용
+    if (onlyCustomers) {
+      filtered = filtered.filter(c => c.isCustomer);
+    }
+    
+    // 2. 그룹 필터 적용 (그룹이 하나라도 선택된 경우)
+    if (selectedGroups.length > 0) {
+      filtered = filtered.filter(c => c.groupIds.some(g => selectedGroups.includes(g)));
+    }
+    
+    return filtered;
+  })();
 
   // 변수 치환 미리보기
   function getPreviewMessage() {
     let preview = message;
-    preview = preview.replace(/#{이름}/g, "홍길동");
+    // targetContacts가 있으면 그 중 첫 번째 사람, 없으면 전체 contacts 중 첫 번째 사람을 샘플로 사용
+    const sampleContact = targetContacts.length > 0 ? targetContacts[0] : contacts[0];
+    
+    if (sampleContact) {
+      preview = preview.replace(/#{이름}/g, sampleContact.name);
+      preview = preview.replace(/#{메모}/g, sampleContact.memo || "");
+      preview = preview.replace(/#{전화번호}/g, sampleContact.phone);
+    } else {
+      preview = preview.replace(/#{이름}/g, "홍길동");
+      preview = preview.replace(/#{메모}/g, "메모 내용");
+      preview = preview.replace(/#{전화번호}/g, "010-0000-0000");
+    }
+    
+    // 공통 변수 (샘플 데이터)
     preview = preview.replace(/#{주문번호}/g, "ORD-20260320");
     preview = preview.replace(/#{금액}/g, "59,000");
     preview = preview.replace(/#{운송장번호}/g, "123456789");
+    
     return preview;
   }
 
@@ -154,12 +181,22 @@ export default function MessagesPage() {
             <div className={styles.panelTitle}>📋 수신 대상 ({targetContacts.length}명)</div>
             <div className={styles.groupList}>
               <button
-                className={`${styles.groupOption} ${selectedGroups.length === 0 ? styles.groupActive : ""}`}
-                onClick={() => setSelectedGroups([])}
+                className={`${styles.groupOption} ${(!onlyCustomers && selectedGroups.length === 0) ? styles.groupActive : ""}`}
+                onClick={() => { setOnlyCustomers(false); setSelectedGroups([]); }}
               >
                 <span className={styles.groupDot} style={{ background: "var(--text-muted)" }} />
                 전체 연락처
                 <span className={styles.groupCount}>{contacts.length}</span>
+              </button>
+
+              <button
+                className={`${styles.groupOption} ${onlyCustomers ? styles.groupActive : ""}`}
+                onClick={() => setOnlyCustomers(!onlyCustomers)}
+                style={onlyCustomers ? { border: "1px solid var(--brand-primary)", background: "rgba(102, 126, 234, 0.1)" } : {}}
+              >
+                <span className={styles.groupDot} style={{ background: "#FFD700" }} />
+                💎 등록된 고객만
+                <span className={styles.groupCount}>{contacts.filter(c => c.isCustomer).length}</span>
               </button>
               {groups.map((g) => (
                 <button
@@ -184,7 +221,7 @@ export default function MessagesPage() {
             {/* 변수 힌트 */}
             <div className={styles.variableHint}>
               💡 변수 삽입:
-              {["이름", "주문번호", "금액"].map((v) => (
+              {["이름", "주문번호", "금액", "메모"].map((v) => (
                 <span
                   key={v}
                   className={styles.variableTag}
@@ -290,8 +327,8 @@ export default function MessagesPage() {
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <span>수신자</span>
-                <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-                  {targetContacts.length}명
+                <span style={{ fontWeight: 600, color: "var(--brand-primary)" }}>
+                  {targetContacts.length}명 {onlyCustomers && "(⭐ 고객 전용)"}
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -339,6 +376,14 @@ export default function MessagesPage() {
                     {targetContacts.length - sendSuccess - sendFail}
                   </div>
                   <div className={styles.progressStatLabel}>⏳ 대기</div>
+                </div>
+              </div>
+
+              {/* 실시간 치환 샘플 (최종 수신자 1인 기준) */}
+              <div style={{ marginTop: 20, textAlign: "left", fontSize: 13, background: "rgba(255,255,255,0.05)", padding: 12, borderRadius: 8, border: "1px solid var(--border-primary)" }}>
+                <div style={{ color: "var(--text-muted)", marginBottom: 8, fontSize: 11 }}>📝 첫 번째 수신자 발송 예시 ({targetContacts[0]?.name || "없음"})</div>
+                <div style={{ color: "var(--text-primary)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                  {getPreviewMessage()}
                 </div>
               </div>
 

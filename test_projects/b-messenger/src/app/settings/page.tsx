@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from "react";
 import { dataStore, ApiSetting } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<ApiSetting[]>([]);
@@ -14,6 +15,29 @@ export default function SettingsPage() {
   const [testing, setTesting] = useState(false);
   const [testPhone, setTestPhone] = useState("");
   const [sending, setSending] = useState(false);
+
+  // 비밀번호 변경용 상태
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPw, setChangingPw] = useState(false);
+  const [pwMessage, setPwMessage] = useState("");
+
+  async function handleChangePassword() {
+    if (newPassword.length < 6) {
+      setPwMessage("❌ 비밀번호는 6자 이상이어야 합니다.");
+      return;
+    }
+    setChangingPw(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setChangingPw(false);
+    if (error) {
+      setPwMessage(`❌ 오류: ${error.message}`);
+    } else {
+      setPwMessage("✅ 비밀번호가 성공적으로 변경되었습니다.");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -216,6 +240,63 @@ export default function SettingsPage() {
             <p>4️⃣ 카카오 알림톡 사용 시: 카카오 비즈니스 채널 연동</p>
           </div>
         </div>
+
+        {/* 비밀번호 변경 */}
+        <div className="glass-card" style={{ padding: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 12,
+              background: "linear-gradient(135deg, #f59e0b, #d97706)", display: "flex",
+              alignItems: "center", justifyContent: "center", fontSize: 24,
+              border: "1px solid rgba(245,158,11,0.3)"
+            }}>🔑</div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 18 }}>비밀번호 변경</div>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>계정의 비밀번호를 안전하게 변경하세요</div>
+            </div>
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">새 비밀번호</label>
+            <input
+              className="input"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="새로운 비밀번호 (6자 이상)"
+            />
+          </div>
+          <div className="form-group" style={{ marginTop: 12 }}>
+            <label className="form-label">비밀번호 확인</label>
+            <input
+              className="input"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="비밀번호 재입력"
+            />
+          </div>
+          <button 
+            className="btn btn-primary" 
+            onClick={handleChangePassword}
+            disabled={changingPw || !newPassword || newPassword !== confirmPassword}
+            style={{ width: "100%", marginTop: 24 }}
+          >
+            {changingPw ? "변경 중..." : "비밀번호 업데이트"}
+          </button>
+          {pwMessage && (
+            <div style={{ 
+              marginTop: 12, padding: "10px 14px", borderRadius: 10,
+              background: pwMessage.includes("✅") ? "rgba(16,185,129,0.1)" : "rgba(248,113,113,0.1)",
+              border: pwMessage.includes("✅") ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(248,113,113,0.3)",
+              color: pwMessage.includes("✅") ? "#34d399" : "#f87171",
+              fontSize: 13
+            }}>
+              {pwMessage}
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* 법률 안내 */}

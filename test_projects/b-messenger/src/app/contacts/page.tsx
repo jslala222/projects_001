@@ -15,8 +15,13 @@ export default function ContactsPage() {
   const [filterGroup, setFilterGroup] = useState<string>("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showGroupModal, setShowGroupModal] = useState(false);
   const [editContact, setEditContact] = useState<Contact | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 새 그룹 폼 상태
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupColor, setNewGroupColor] = useState("#667eea");
 
   // 폼 상태
   const [formName, setFormName] = useState("");
@@ -69,6 +74,7 @@ export default function ContactsPage() {
       await dataStore.addContact({
         name: formName, phone: formPhone, memo: formMemo,
         groupIds: formGroups, isKakaoFriend: formKakao,
+        isCustomer: false,
       });
     }
     setShowAddModal(false);
@@ -78,6 +84,27 @@ export default function ContactsPage() {
   async function handleDelete(id: string) {
     if (confirm("정말 삭제하시겠습니까?")) {
       await dataStore.deleteContact(id);
+      refresh();
+    }
+  }
+
+  async function handleToggleCustomer(contact: Contact) {
+    const success = await dataStore.toggleCustomerStatus(contact.id, !contact.isCustomer);
+    if (success) {
+      refresh();
+    }
+  }
+
+  async function handleAddGroup() {
+    if (!newGroupName.trim()) return;
+    await dataStore.addGroup(newGroupName.trim(), newGroupColor);
+    setNewGroupName("");
+    refresh();
+  }
+
+  async function handleDeleteGroup(id: string) {
+    if (confirm("그룹을 삭제하면 해당 그룹에 속했던 연락처의 분류 정보만 초기화됩니다. 계속하시겠습니까?")) {
+      await dataStore.deleteGroup(id);
       refresh();
     }
   }
@@ -100,6 +127,7 @@ export default function ContactsPage() {
           memo: cols[2] || "",
           groupIds: [] as string[],
           isKakaoFriend: false,
+          isCustomer: false,
         };
       }).filter(c => c.phone);
 
@@ -128,6 +156,9 @@ export default function ContactsPage() {
           <p className="page-subtitle">연락처를 관리하고 그룹으로 분류하세요</p>
         </div>
         <div style={{ display: "flex", gap: 12 }}>
+          <button className="btn btn-secondary" onClick={() => setShowGroupModal(true)}>
+            🏷️ 그룹 관리
+          </button>
           <button className="btn btn-secondary" onClick={() => setShowUploadModal(true)}>
             📁 CSV 업로드
           </button>
@@ -177,6 +208,7 @@ export default function ContactsPage() {
         <table className={styles.contactTable}>
           <thead>
             <tr>
+              <th style={{ width: 40, textAlign: "center" }}>고객</th>
               <th>이름</th>
               <th>전화번호</th>
               <th>그룹</th>
@@ -187,7 +219,16 @@ export default function ContactsPage() {
           </thead>
           <tbody>
             {filtered.map((contact) => (
-              <tr key={contact.id}>
+              <tr key={contact.id} className={contact.isCustomer ? styles.rowCustomer : ""}>
+                <td style={{ textAlign: "center" }}>
+                  <button 
+                    className={styles.starBtn} 
+                    onClick={() => handleToggleCustomer(contact)}
+                    title={contact.isCustomer ? "고객 해제" : "고객으로 등록"}
+                  >
+                    {contact.isCustomer ? "⭐" : "☆"}
+                  </button>
+                </td>
                 <td><span className={styles.contactName}>{contact.name}</span></td>
                 <td><span className={styles.contactPhone}>{contact.phone}</span></td>
                 <td>
@@ -306,6 +347,76 @@ export default function ContactsPage() {
             />
             <div className={styles.modalActions}>
               <button className="btn btn-secondary" onClick={() => setShowUploadModal(false)}>닫기</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 그룹 관리 모달 */}
+      {showGroupModal && (
+        <div className="modal-overlay" onClick={() => setShowGroupModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>🏷️ 그룹 관리</h2>
+            
+            {/* 새 그룹 추가 */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+              <input
+                className="input"
+                style={{ flex: 1 }}
+                placeholder="새 그룹 이름"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                maxLength={20}
+              />
+              <input
+                type="color"
+                value={newGroupColor}
+                onChange={(e) => setNewGroupColor(e.target.value)}
+                style={{ width: 44, height: 44, padding: 0, border: "none", borderRadius: 8, cursor: "pointer", background: "transparent" }}
+                title="그룹 색상 선택"
+              />
+              <button className="btn btn-primary" onClick={handleAddGroup} disabled={!newGroupName.trim()}>
+                추가
+              </button>
+            </div>
+
+            {/* 기존 그룹 목록 */}
+            <div style={{ maxHeight: 300, overflowY: "auto", border: "1px solid var(--border-primary)", borderRadius: 12, background: "rgba(0,0,0,0.1)" }}>
+              {groups.map(g => (
+                <div key={g.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid var(--border-primary)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ position: "relative", width: 18, height: 18, borderRadius: "50%", overflow: "hidden", border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer", flexShrink: 0 }} title="색상 변경">
+                      <input
+                        type="color"
+                        value={g.color}
+                        onChange={async (e) => {
+                          const newColor = e.target.value;
+                          await dataStore.updateGroup(g.id, newColor);
+                          refresh();
+                        }}
+                        style={{ position: "absolute", top: -10, left: -10, width: 44, height: 44, padding: 0, border: "none", cursor: "pointer" }}
+                      />
+                    </div>
+                    <span style={{ fontWeight: 600 }}>{g.name}</span>
+                    <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>({g.contactCount}명)</span>
+                  </div>
+                  <button 
+                    onClick={() => handleDeleteGroup(g.id)}
+                    style={{ background: "transparent", border: "none", color: "#f87171", cursor: "pointer", padding: "4px 8px", fontSize: 13, fontWeight: 600 }}
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))}
+              {groups.length === 0 && (
+                <div style={{ padding: 24, textAlign: "center", color: "var(--text-secondary)" }}>
+                  생성된 그룹이 아직 없습니다.
+                </div>
+              )}
+            </div>
+
+            <div className={styles.modalActions} style={{ marginTop: 24 }}>
+              <button className="btn btn-secondary" onClick={() => setShowGroupModal(false)} style={{ width: "100%" }}>닫기</button>
             </div>
           </div>
         </div>

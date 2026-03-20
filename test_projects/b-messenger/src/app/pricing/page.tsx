@@ -8,63 +8,63 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthContext";
 import { supabase } from "@/lib/supabase";
 
-// 요금제 정의
+// 요금제 정의 (라이선스 모델로 개편)
 const plans = [
   {
     id: "free",
     name: "Free",
-    emoji: "🆓",
+    emoji: "🌱",
     price: 0,
     priceLabel: "무료",
     color: "#94a3b8",
     features: [
-      "월 100건 발송",
-      "연락처 50명",
-      "기본 템플릿 3개",
-      "SMS만 가능",
+      "연락처 최대 100명",
+      "기본 그룹 관리 (3개)",
+      "모든 채널 발송 지원",
+      "발송 건수 무제한 (본인 API)",
+      "기본 통계 제공",
     ],
-    limits: { sends: 100, contacts: 50, templates: 3 },
+    limits: { contacts: 100, groups: 3 },
   },
   {
     id: "pro",
     name: "Pro",
-    emoji: "⭐",
-    price: 29000,
-    priceLabel: "₩29,000/월",
+    emoji: "🚀",
+    price: 19000,
+    priceLabel: "₩19,000/월",
     color: "#667eea",
     popular: true,
     features: [
-      "월 5,000건 발송",
-      "연락처 1,000명",
-      "템플릿 무제한",
-      "SMS + 카카오톡",
-      "발송 통계 분석",
-      "CSV 대량 업로드",
+      "연락처 최대 5,000명",
+      "그룹 무제한 생성",
+      "엑셀 대량 업로드 (CSV)",
+      "고급 발송 통계 분석",
+      "치환 변수 활용 기능",
+      "발송 건수 무제한 (본인 API)",
     ],
-    limits: { sends: 5000, contacts: 1000, templates: -1 },
+    limits: { contacts: 5000, groups: -1 },
   },
   {
     id: "enterprise",
     name: "Enterprise",
-    emoji: "🏢",
-    price: 99000,
-    priceLabel: "₩99,000/월",
+    emoji: "💎",
+    price: 49000,
+    priceLabel: "₩49,000/월",
     color: "#764ba2",
     features: [
-      "월 무제한 발송",
-      "연락처 무제한",
-      "템플릿 무제한",
-      "SMS + 카카오톡 + MMS",
+      "연락처 무제한 저장",
       "실시간 발송 모니터링",
-      "전담 기술 지원",
-      "API 연동 지원",
+      "고객 관리 전용 메뉴 (⭐)",
+      "전담 기술 및 API 연동 지원",
+      "광고성 문자 수기 검토 지원",
+      "발송 건수 무제한 (본인 API)",
     ],
-    limits: { sends: -1, contacts: -1, templates: -1 },
+    limits: { contacts: -1, groups: -1 },
   },
 ];
 
 export default function PricingPage() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [currentPlan, setCurrentPlan] = useState("free");
   const [changing, setChanging] = useState(false);
   const [toast, setToast] = useState("");
@@ -95,6 +95,9 @@ export default function PricingPage() {
 
     if (!error) {
       setCurrentPlan(planId);
+      // 🔥 전역 인증 컨텍스트의 플랜 정보도 갱신하여 사이드바 등에 즉시 반영
+      await refreshProfile();
+      
       const planName = plans.find((p) => p.id === planId)?.name || planId;
       setToast(`✅ ${planName} 플랜으로 변경되었습니다!`);
       setTimeout(() => setToast(""), 3000);
@@ -247,10 +250,10 @@ export default function PricingPage() {
             padding: 16, background: "var(--bg-glass)",
             borderRadius: "var(--radius-md)", border: "1px solid var(--border-primary)",
           }}>
-            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>📱 발송 비용</div>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>📱 발송 비용 (별도)</div>
             <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-              메시지 발송 비용(SMS/카카오톡)은 솔라피 계정에서 별도로 청구됩니다.
-              플랜 요금에 발송 비용은 포함되지 않습니다.
+              메시지 발송 비용(SMS/카카오톡)은 솔라피 계정에서 소진됩니다. 
+              자동차 대여료(라이선스)와 연료비(발송료)가 따로인 것과 같습니다.
             </div>
           </div>
           <div style={{
