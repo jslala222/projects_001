@@ -1,0 +1,129 @@
+/* ================================================================
+   Header.module.css — 상단 헤더 바 스타일
+   ================================================================ */
+
+.header {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-width);
+  right: 0;
+  height: var(--header-height);
+  background: rgba(10, 14, 26, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  z-index: 50;
+}
+
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  width: 320px;
+  transition: all var(--transition-fast);
+}
+
+.searchBar:focus-within {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+}
+
+.searchIcon {
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+.searchInput {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  width: 100%;
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  position: relative;
+  cursor: pointer;
+}
+
+.iconBtn:hover {
+  background: var(--bg-glass-hover);
+  color: var(--text-primary);
+}
+
+.notifDot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background: var(--error);
+  border-radius: 50%;
+  border: 2px solid var(--bg-primary);
+}
+
+.newMsgBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: var(--brand-gradient);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.newMsgBtn:hover {
+  box-shadow: var(--shadow-glow), var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 1024px) {
+  .header {
+    left: 0;
+    padding: 0 16px 0 60px;
+  }
+  .searchBar {
+    width: 200px;
+  }
+}
+
+@media (max-width: 640px) {
+  .searchBar {
+    display: none;
+  }
+}

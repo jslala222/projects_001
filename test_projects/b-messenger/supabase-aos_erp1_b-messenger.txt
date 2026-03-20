@@ -1,0 +1,47 @@
+supabase.com    
+==========
+
+
+
+Organization  ( 조직 )     --    dsuc-supabase
+
+
+Project name  ( 프로젝트명  )   -- aos_erp1
+
+
+Database password ( 데이터베이스 비밀번호 )   --    @@0401dsuc@@
+
+
+
+
+프로젝트명 : aos_erp1
+
+Project URL
+https://jsdqmsbqtgdacccqkrjm.supabase.co
+
+Publishable Key
+sb_publishable_oZxwN2IjTDglga7duHV5zg_hbZ_gEmX
+
+Anon Key (Legacy)
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzZHFtc2JxdGdkYWNjY3FrcmptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkzNTI5ODMsImV4cCI6MjA4NDkyODk4M30.7ADXbt6pT-MF1KYybdGE7wbtK5YaULby2OLwh65cj2c
+
+service_role
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzZHFtc2JxdGdkYWNjY3FrcmptIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTM1Mjk4MywiZXhwIjoyMDg0OTI4OTgzfQ.o3X2gwQ4THLBcJ3kktiSsoExnGj3Pp1A-xiAcIM9LbM
+
+---------------------------------------------------------------------------------
+클로드코드  mcp
+
+{
+  "mcpServers": {
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=jsdqmsbqtgdacccqkrjm"
+    }
+  }
+}
+-----------------------------------------------------------------------------------
+프로그램 테스트  admin  계정
+
+
+

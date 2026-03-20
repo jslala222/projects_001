@@ -1,0 +1,409 @@
+/* ================================================================
+   messages.module.css — 메시지 작성 페이지 스타일
+   ================================================================ */
+
+.messagePage {
+  animation: slideInUp 400ms ease both;
+}
+
+.composer {
+  display: grid;
+  grid-template-columns: 280px 1fr 300px;
+  gap: 20px;
+  min-height: calc(100vh - var(--header-height) - 120px);
+}
+
+/* 왼쪽 패널: 채널 선택 & 수신 대상 */
+.leftPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.panelTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 채널 선택 라디오 */
+.channelList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.channelOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.channelOption:hover {
+  border-color: var(--border-hover);
+}
+
+.channelActive {
+  border-color: var(--brand-primary);
+  background: rgba(102, 126, 234, 0.08);
+  color: var(--text-primary);
+}
+
+.channelIcon {
+  font-size: 18px;
+}
+
+/* 그룹 선택 */
+.groupList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.groupOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.groupOption:hover {
+  background: var(--bg-glass-hover);
+}
+
+.groupActive {
+  background: var(--bg-glass-active);
+  color: var(--text-primary);
+}
+
+.groupDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.groupCount {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* 가운데 패널: 메시지 편집기 */
+.centerPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.editorCard {
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  flex: 1;
+}
+
+.variableHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(102, 126, 234, 0.06);
+  border: 1px solid rgba(102, 126, 234, 0.15);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.variableTag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--brand-primary);
+  color: white;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.variableTag:hover {
+  background: var(--brand-secondary);
+}
+
+.charCount {
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.charWarning {
+  color: var(--warning);
+}
+
+.charOver {
+  color: var(--error);
+}
+
+/* 옵션 토글 */
+.optionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.optionRow:last-child {
+  border-bottom: none;
+}
+
+.optionLabel {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.toggle {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-primary);
+  position: relative;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.toggle.active {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.toggleDot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform var(--transition-fast);
+}
+
+.toggle.active .toggleDot {
+  transform: translateX(20px);
+}
+
+/* 오른쪽 패널: 폰 미리보기 */
+.rightPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.previewCard {
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 폰 미리보기 */
+.phone {
+  width: 240px;
+  background: #1a1a2e;
+  border-radius: 28px;
+  padding: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  border: 2px solid rgba(255,255,255,0.1);
+}
+
+.phoneScreen {
+  background: #e5ddd5;
+  border-radius: 18px;
+  min-height: 380px;
+  overflow: hidden;
+}
+
+.phoneHeader {
+  background: #075e54;
+  color: white;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.phoneHeaderKakao {
+  background: #4a3434;
+}
+
+.phoneAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.phoneBody {
+  padding: 14px;
+  min-height: 280px;
+}
+
+.messageBubble {
+  background: white;
+  border-radius: 0 12px 12px 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #333;
+  max-width: 90%;
+  word-break: break-all;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.messageBubbleKakao {
+  background: #fee500;
+  color: #333;
+}
+
+.messageTime {
+  font-size: 10px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.kakaoButtons {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kakaoBtn {
+  padding: 8px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 12px;
+  color: #333;
+  font-weight: 500;
+}
+
+/* 하단 발송 버튼 영역 */
+.sendActions {
+  display: flex;
+  gap: 12px;
+}
+
+.sendActions .btn {
+  flex: 1;
+}
+
+/* 발송 진행 모달 */
+.progressModal {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.progressTitle {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.progressBarLarge {
+  width: 100%;
+  height: 16px;
+  background: var(--bg-glass);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.progressFillLarge {
+  height: 100%;
+  background: var(--brand-gradient);
+  border-radius: 8px;
+  transition: width 300ms ease;
+}
+
+.progressStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.progressStat {
+  text-align: center;
+}
+
+.progressStatValue {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.progressStatLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.progressSuccess { color: var(--success); }
+.progressFail { color: var(--error); }
+.progressPending { color: var(--text-muted); }
+
+@media (max-width: 1200px) {
+  .composer {
+    grid-template-columns: 1fr;
+  }
+  .phone {
+    width: 200px;
+  }
+}
