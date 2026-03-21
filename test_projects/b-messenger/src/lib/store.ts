@@ -16,6 +16,19 @@ export interface Contact {
   isKakaoFriend: boolean;
   isCustomer: boolean;
   createdAt: string;
+  // 확장 필드
+  addressBookId?: string | null;
+  email?: string | null;
+  gender?: string | null;
+  birthdate?: string | null;
+  job?: string | null;
+  interests?: string[] | null;
+  address?: string | null;
+  postalCode?: string | null;
+  marketingAgree?: boolean;
+  joinDate?: string | null;
+  // 입력 방식: 'csv' = CSV업로드(수정 전), 'manual' = 직접입력 or 수정된 CSV
+  source?: string;
 }
 
 export interface Group {
@@ -74,6 +87,14 @@ export interface ApiSetting {
   isActive: boolean;
 }
 
+export interface AddressBook {
+  id: string;
+  name: string;
+  slot: number;
+  contactCount: number;
+  createdAt: string;
+}
+
 // ── 테넌트 ID (Supabase Auth 기반) ──
 let TENANT_ID: string | null = null;
 
@@ -126,6 +147,17 @@ function dbToContact(row: Record<string, unknown>): Contact {
     isKakaoFriend: (row.is_kakao_friend as boolean) || false,
     isCustomer: (row.is_customer as boolean) || false,
     createdAt: row.created_at as string,
+    addressBookId: (row.address_book_id as string) ?? null,
+    email: (row.email as string) ?? null,
+    gender: (row.gender as string) ?? null,
+    birthdate: (row.birthdate as string) ?? null,
+    job: (row.job as string) ?? null,
+    interests: (row.interests as string[]) ?? null,
+    address: (row.address as string) ?? null,
+    postalCode: (row.postal_code as string) ?? null,
+    marketingAgree: (row.marketing_agree as boolean) ?? true,
+    joinDate: (row.join_date as string) ?? null,
+    source: (row.source as string) || 'manual',
   };
 }
 
@@ -174,7 +206,7 @@ function dbToCampaign(row: Record<string, unknown>): Campaign {
 // ── Supabase 데이터 스토어 ──
 class DataStore {
   // ── 연락처 ──
-  async getContacts(onlyCustomers: boolean = false): Promise<Contact[]> {
+  async getContacts(onlyCustomers: boolean = false, addressBookId?: string | null): Promise<Contact[]> {
     const tenantId = await getTenantId();
     let q = supabase
       .from(TABLES.CONTACTS)
@@ -184,11 +216,64 @@ class DataStore {
     if (onlyCustomers) {
       q = q.eq("is_customer", true);
     }
+    if (addressBookId !== undefined && addressBookId !== null) {
+      q = q.eq("address_book_id", addressBookId);
+    }
 
-    const { data, error } = await q.order("created_at", { ascending: false });
+    const { data, error } = await q.order("created_at", { ascending: false }).range(0, 9999);
 
     if (error) { console.error("연락처 조회 오류:", error); return []; }
     return (data || []).map(dbToContact);
+  }
+
+  // 서버사이드 페이지네이션 + 검색 + 정렬
+  async getContactsPaged(
+    page: number,
+    pageSize: number,
+    onlyCustomers = false,
+    addressBookId?: string | null,
+    search?: string,
+    sortBy: "name" | "created_at" | "join_date" | "gender" | "marketing_agree" = "name",
+    sortDir: "asc" | "desc" = "asc"
+  ): Promise<{ contacts: Contact[]; total: number }> {
+    const tenantId = await getTenantId();
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+
+    let q = supabase
+      .from(TABLES.CONTACTS)
+      .select("*", { count: "exact" })
+      .eq("tenant_id", tenantId);
+
+    if (onlyCustomers) q = q.eq("is_customer", true);
+    if (addressBookId !== undefined && addressBookId !== null) {
+      q = q.eq("address_book_id", addressBookId);
+    }
+    if (search && search.trim()) {
+      q = q.or(`name.ilike.%${search.trim()}%,phone.ilike.%${search.trim()}%`);
+    }
+
+    const { data, error, count } = await q
+      .order(sortBy, { ascending: sortDir === "asc", nullsFirst: false })
+      .range(from, to);
+
+    if (error) { console.error("연락처 페이지 조회 오류:", error); return { contacts: [], total: 0 }; }
+    return { contacts: (data || []).map(dbToContact), total: count || 0 };
+  }
+
+  // 정확한 전체 건수 조회 (탭 카운트용)
+  async getContactsCount(onlyCustomers = false, addressBookId?: string | null): Promise<number> {
+    const tenantId = await getTenantId();
+    let q = supabase
+      .from(TABLES.CONTACTS)
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId);
+    if (onlyCustomers) q = q.eq("is_customer", true);
+    if (addressBookId !== undefined && addressBookId !== null) {
+      q = q.eq("address_book_id", addressBookId);
+    }
+    const { count } = await q;
+    return count || 0;
   }
 
   async getContactsByGroup(groupId: string): Promise<Contact[]> {
@@ -216,6 +301,17 @@ class DataStore {
         group_ids: data.groupIds,
         is_kakao_friend: data.isKakaoFriend,
         is_customer: data.isCustomer || false,
+        address_book_id: data.addressBookId ?? null,
+        email: data.email ?? null,
+        gender: data.gender ?? null,
+        birthdate: data.birthdate ?? null,
+        job: data.job ?? null,
+        interests: data.interests ?? null,
+        address: data.address ?? null,
+        postal_code: data.postalCode ?? null,
+        marketing_agree: data.marketingAgree ?? true,
+        join_date: data.joinDate ?? null,
+        source: 'manual',
       })
       .select()
       .single();
@@ -233,7 +329,17 @@ class DataStore {
       memo: d.memo,
       group_ids: d.groupIds,
       is_kakao_friend: d.isKakaoFriend,
-      is_customer: d.isCustomer || false,
+      is_customer: d.isCustomer || false,      address_book_id: d.addressBookId ?? null,
+      email: d.email ?? null,
+      gender: d.gender ?? null,
+      birthdate: d.birthdate ?? null,
+      job: d.job ?? null,
+      interests: d.interests ?? null,
+      address: d.address ?? null,
+      postal_code: d.postalCode ?? null,
+      marketing_agree: d.marketingAgree ?? true,
+      join_date: d.joinDate ?? null,
+      source: d.source || 'manual',
     }));
 
     const { data, error } = await supabase
@@ -253,6 +359,18 @@ class DataStore {
     if (data.groupIds !== undefined) updateData.group_ids = data.groupIds;
     if (data.isKakaoFriend !== undefined) updateData.is_kakao_friend = data.isKakaoFriend;
     if (data.isCustomer !== undefined) updateData.is_customer = data.isCustomer;
+    if (data.addressBookId !== undefined) updateData.address_book_id = data.addressBookId;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.gender !== undefined) updateData.gender = data.gender;
+    if (data.birthdate !== undefined) updateData.birthdate = data.birthdate;
+    if (data.job !== undefined) updateData.job = data.job;
+    if (data.interests !== undefined) updateData.interests = data.interests;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.postalCode !== undefined) updateData.postal_code = data.postalCode;
+    if (data.marketingAgree !== undefined) updateData.marketing_agree = data.marketingAgree;
+    if (data.joinDate !== undefined) updateData.join_date = data.joinDate;
+    // 수정 시 source를 항상 'manual'로 → 일괄삭제 보호 대상으로 전환
+    updateData.source = 'manual';
 
     const { data: updated, error } = await supabase
       .from(TABLES.CONTACTS)
@@ -272,6 +390,37 @@ class DataStore {
       .eq("id", id);
 
     if (error) { console.error("연락처 삭제 오류:", error); return false; }
+    return true;
+  }
+
+  // CSV 업로드 연락처만 건수 조회 (수정된 것 제외)
+  async getCsvContactsCount(addressBookId?: string | null): Promise<number> {
+    const tenantId = await getTenantId();
+    let q = supabase
+      .from(TABLES.CONTACTS)
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .eq("source", "csv");
+    if (addressBookId !== undefined && addressBookId !== null) {
+      q = q.eq("address_book_id", addressBookId);
+    }
+    const { count } = await q;
+    return count || 0;
+  }
+
+  // CSV 업로드 연락처 일괄삭제 (수정된 것 제외)
+  async deleteCsvContacts(addressBookId?: string | null): Promise<boolean> {
+    const tenantId = await getTenantId();
+    let q = supabase
+      .from(TABLES.CONTACTS)
+      .delete()
+      .eq("tenant_id", tenantId)
+      .eq("source", "csv");
+    if (addressBookId !== undefined && addressBookId !== null) {
+      q = q.eq("address_book_id", addressBookId);
+    }
+    const { error } = await q;
+    if (error) { console.error("CSV 연락처 일괄삭제 오류:", error); return false; }
     return true;
   }
 
@@ -620,6 +769,87 @@ class DataStore {
       channelStats,
       dailyStats,
     };
+  }
+
+  // ── 주소록 (다중 주소록) ──
+  async getAddressBooks(): Promise<AddressBook[]> {
+    const tenantId = await getTenantId();
+    const { data, error } = await supabase
+      .from(TABLES.ADDRESS_BOOKS)
+      .select("*")
+      .eq("user_id", tenantId)
+      .order("slot", { ascending: true });
+
+    if (error) { console.error("주소록 조회 오류:", error); return []; }
+
+    // contact_count 집계
+    const counts = await Promise.all(
+      (data || []).map(async (book) => {
+        const { count } = await supabase
+          .from(TABLES.CONTACTS)
+          .select("id", { count: "exact", head: true })
+          .eq("address_book_id", book.id);
+        return { id: book.id as string, count: count ?? 0 };
+      })
+    );
+    const countMap = Object.fromEntries(counts.map(c => [c.id, c.count]));
+
+    return (data || []).map(book => ({
+      id: book.id as string,
+      name: book.name as string,
+      slot: book.slot as number,
+      contactCount: countMap[book.id as string] ?? 0,
+      createdAt: book.created_at as string,
+    }));
+  }
+
+  async addAddressBook(name: string, plan: string): Promise<{ success: boolean; error?: string; data?: AddressBook }> {
+    if (plan !== "enterprise") {
+      return { success: false, error: "Enterprise 요금제에서만 사용 가능합니다." };
+    }
+    const tenantId = await getTenantId();
+    const existing = await this.getAddressBooks();
+    if (existing.length >= 5) {
+      return { success: false, error: "주소록은 최대 5개까지만 추가할 수 있습니다." };
+    }
+    const usedSlots = existing.map(b => b.slot);
+    let nextSlot = 1;
+    while (usedSlots.includes(nextSlot)) nextSlot++;
+
+    const { data, error } = await supabase
+      .from(TABLES.ADDRESS_BOOKS)
+      .insert({ user_id: tenantId, name, slot: nextSlot })
+      .select()
+      .single();
+
+    if (error) { console.error("주소록 추가 오류:", error); return { success: false, error: "주소록 추가에 실패했습니다." }; }
+    return { success: true, data: { id: data.id, name: data.name, slot: data.slot, contactCount: 0, createdAt: data.created_at } };
+  }
+
+  async renameAddressBook(bookId: string, newName: string): Promise<{ success: boolean; error?: string }> {
+    const trimmed = newName.trim();
+    if (!trimmed) return { success: false, error: "주소록 이름을 입력해주세요." };
+    if (trimmed.length > 20) return { success: false, error: "이름은 20자 이내로 입력해주세요." };
+    const tenantId = await getTenantId();
+    const { error } = await supabase
+      .from(TABLES.ADDRESS_BOOKS)
+      .update({ name: trimmed })
+      .eq("id", bookId)
+      .eq("user_id", tenantId);
+    if (error) return { success: false, error: "이름 변경에 실패했습니다." };
+    return { success: true };
+  }
+
+  async deleteAddressBook(bookId: string): Promise<{ success: boolean; error?: string }> {
+    const tenantId = await getTenantId();
+    // 연락처는 address_book_id = NULL 로 (ON DELETE SET NULL)
+    const { error } = await supabase
+      .from(TABLES.ADDRESS_BOOKS)
+      .delete()
+      .eq("id", bookId)
+      .eq("user_id", tenantId);
+    if (error) return { success: false, error: "주소록 삭제에 실패했습니다." };
+    return { success: true };
   }
 
   // ── API 설정 ──

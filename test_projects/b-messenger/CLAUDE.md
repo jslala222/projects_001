@@ -9,6 +9,13 @@
 ```bash
 npm run dev  # 자동으로 6600 포트 사용
 ```
+## AI 개발 원칙 ⭐
+**모든 코드 추가/수정은 AI(Copilot/Claude)가 직접 진행한다.**
+- ✅ 코드 파일 생성/수정: AI가 직접 편집
+- ✅ SQL 마이그레이션: AI가 Supabase MCP(`project_ref: lajjbrrysvkaxzrchanp`)를 통해 직접 실행
+- ⚠️ MCP 연결 실패 시: AI가 SQL 스크립트를 제공하고 사용자에게 Supabase 대시보드 → SQL Editor 실행 요청
+- ❌ 사용자에게 코드 직접 작성 요청 금지
+
 
 ## Supabase 테이블 네이밍 규칙 ⭐
 **모든 테이블 이름 앞에 `b-messenger_` 접두사를 붙인다.**
@@ -51,6 +58,8 @@ npm run dev  # 자동으로 6600 포트 사용
   - `formatKSTLocale()` - 한국식 포맷 ('2026. 3. 3. 오후 1:45:30')
   - `toKSTDate(date)` - Date 객체를 한국 시간으로 변환
 - **절대금지**: `new Date().toUTCString()`, `new Date().toISOString()` (UTC 시간)
+
+
 
 ## 프로젝트 구분
 - 🌾 **farm-manager** (포트: 5555) - 농장 관리 프로그램

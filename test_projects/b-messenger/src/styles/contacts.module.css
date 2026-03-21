@@ -49,6 +49,28 @@
   flex-wrap: wrap;
 }
 
+/* 정렬 드롭박스 */
+.sortSelect {
+  height: 42px;
+  padding: 0 36px 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+  appearance: none;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: border-color 0.2s;
+}
+
+.sortSelect:hover,
+.sortSelect:focus {
+  border-color: var(--accent-purple);
+  outline: none;
+}
+
 .chip {
   padding: 6px 14px;
   border-radius: 20px;
@@ -225,6 +247,21 @@
   border-left: 3px solid var(--brand-primary);
 }
 
+/* 행 클릭 가능 스타일 */
+.rowClickable {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.rowClickable:hover {
+  background: rgba(124, 58, 237, 0.07) !important;
+}
+
+/* 보조 정보 셀 */
+.cellSecondary {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+}
+
 /* 모달 폼 */
 .formGrid {
   display: grid;
@@ -241,6 +278,60 @@
   justify-content: flex-end;
   gap: 12px;
   margin-top: 24px;
+}
+
+/* 페이지네이션 */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-primary);
+}
+
+.pageBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pageBtn:hover:not(:disabled) {
+  background: var(--bg-glass);
+  color: var(--text-primary);
+  border-color: var(--accent-purple);
+}
+
+.pageBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.pageInfo {
+  padding: 0 16px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  min-width: 120px;
+  text-align: center;
+}
+
+.pageInfo strong {
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.pageTotal {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .uploadZone {
@@ -283,4 +374,175 @@
   .formGrid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── 아코디언 인라인 카드 ─────────────────────────── */
+
+/* 선택된 행 하이라이트 */
+.rowExpanded {
+  background: rgba(102, 126, 234, 0.08) !important;
+}
+.rowExpanded td {
+  border-bottom: none !important;
+}
+
+/* 확장 행 */
+.expandRow td {
+  padding: 0 !important;
+  border-top: none !important;
+}
+.expandCell {
+  padding: 0 !important;
+  background: var(--bg-secondary, #1a1f2e);
+}
+
+/* 인라인 카드 */
+.inlineCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 16px 24px 16px 20px;
+  background: var(--bg-glass);
+  border-left: 3px solid var(--brand-primary, #667eea);
+  border-bottom: 1px solid var(--border-primary);
+  animation: expandDown 0.18s ease;
+}
+
+@keyframes expandDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 좌측 아바타/이름 블록 */
+.inlineCardLeft {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 72px;
+  flex-shrink: 0;
+}
+
+.inlineAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inlineCardName {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.inlineBadges {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.inlineBadge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* 가운데 필드 그리드 */
+.inlineCardFields {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 20px;
+  align-content: start;
+}
+
+.inlineField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inlineFieldFull {
+  grid-column: 1 / -1;
+}
+
+.inlineFieldLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.inlineFieldValue {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.inlineTagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.inlineTag {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: rgba(102, 126, 234, 0.12);
+  border: 1px solid rgba(102, 126, 234, 0.25);
+  border-radius: 10px;
+  color: var(--brand-primary, #818cf8);
+}
+
+/* 우측 액션 버튼 */
+.inlineCardActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  justify-content: center;
+}
+
+.inlineEditBtn {
+  padding: 7px 16px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid rgba(102, 126, 234, 0.4);
+  background: rgba(102, 126, 234, 0.1);
+  color: var(--brand-primary, #818cf8);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.inlineEditBtn:hover {
+  background: rgba(102, 126, 234, 0.2);
+}
+
+.inlineDeleteBtn {
+  padding: 7px 16px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.08);
+  color: #f87171;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.inlineDeleteBtn:hover {
+  background: rgba(248, 113, 113, 0.18);
 }

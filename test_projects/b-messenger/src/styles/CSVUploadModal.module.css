@@ -1,0 +1,396 @@
+/* CSVUploadModal.module.css */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--bg-card, #1e1e2e);
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  border-radius: 16px;
+  width: 100%;
+  max-width: 760px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,0.1));
+  flex-shrink: 0;
+}
+
+.header h2 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary, #e2e8f0);
+  margin: 0;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted, #64748b);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: 0.15s;
+}
+.closeBtn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary, #e2e8f0); }
+
+.body {
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── 섹션 ── */
+.section { display: flex; flex-direction: column; gap: 8px; }
+
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── 주소록 선택 ── */
+.bookSelector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bookBtn {
+  background: var(--bg-input, rgba(255,255,255,0.05));
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+  transition: 0.15s;
+}
+.bookBtn:hover { border-color: var(--color-primary, #7c3aed); }
+.bookBtnActive {
+  background: var(--color-primary, #7c3aed);
+  border-color: var(--color-primary, #7c3aed);
+  color: #fff;
+}
+
+/* ── 템플릿 안내 박스 ── */
+.templateGuide {
+  background: rgba(124, 58, 237, 0.08);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.templateGuideText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.templateGuideText strong {
+  font-size: 13px;
+  color: var(--text-primary, #e2e8f0);
+}
+.templateGuideText span {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+/* ── 템플릿 버튼 ── */
+.templateBtn {
+  background: var(--color-primary, #7c3aed);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.templateBtn:hover { background: #6d28d9; }
+
+/* ── 드롭존 ── */
+.dropZone {
+  border: 2px dashed var(--border, rgba(255,255,255,0.15));
+  border-radius: 12px;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dropZone:hover {
+  border-color: var(--color-primary, #7c3aed);
+  background: rgba(124, 58, 237, 0.05);
+}
+
+.dropIcon { font-size: 32px; }
+.dropText { font-size: 14px; font-weight: 600; color: var(--text-primary, #e2e8f0); }
+.dropHint { font-size: 12px; color: var(--text-muted, #64748b); }
+
+.fileSelected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fileIcon { font-size: 24px; }
+.fileName { font-size: 14px; font-weight: 600; color: var(--text-primary, #e2e8f0); }
+.fileInfo {
+  background: rgba(124,58,237,0.2);
+  color: #a78bfa;
+  border-radius: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+/* ── 매핑 배지 ── */
+.mappedBadge {
+  background: rgba(34,197,94,0.15);
+  color: #22c55e;
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.warnBadge {
+  background: rgba(234,179,8,0.15);
+  color: #eab308;
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ── 매핑 그리드 ── */
+.mappingGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+.mappingRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-input, rgba(255,255,255,0.04));
+  border: 1px solid var(--border, rgba(255,255,255,0.08));
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+
+.origHeader {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  min-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrow { color: var(--text-muted, #64748b); font-size: 12px; flex-shrink: 0; }
+
+.mappingSelect {
+  flex: 1;
+  background: var(--bg-card, #1e1e2e);
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  outline: none;
+  cursor: pointer;
+}
+.mappingSelect option { background: var(--bg-card, #1e1e2e); }
+.mappingSelectMapped {
+  border-color: var(--color-primary, #7c3aed);
+  color: var(--text-primary, #e2e8f0);
+}
+
+/* ── 미리보기 테이블 ── */
+.previewWrapper {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(255,255,255,0.08));
+}
+
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.previewTh, .previewThMapped {
+  padding: 7px 10px;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--text-muted, #64748b);
+  border-bottom: 1px solid var(--border, rgba(255,255,255,0.08));
+  position: relative;
+}
+.previewThMapped { color: var(--text-primary, #e2e8f0); }
+
+.previewThBadge {
+  display: block;
+  font-size: 10px;
+  color: #a78bfa;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.previewTd {
+  padding: 6px 10px;
+  color: var(--text-secondary, #94a3b8);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 진행률 바 ── */
+.progressSection {
+  padding: 14px 0 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.progressInfo {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-secondary, #94a3b8);
+}
+.progressCount {
+  font-weight: 600;
+  color: var(--text-primary, #e2e8f0);
+}
+.progressTrack {
+  width: 100%;
+  height: 8px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #7c3aed, #a78bfa);
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+.progressPct {
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  color: #a78bfa;
+}
+
+/* ── 에러 ── */
+.errorMsg {
+  color: #ef4444;
+  font-size: 13px;
+  padding: 8px 12px;
+  background: rgba(239,68,68,0.08);
+  border-radius: 8px;
+  border: 1px solid rgba(239,68,68,0.2);
+}
+
+/* ── 푸터 ── */
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.cancelBtn {
+  background: var(--bg-input, rgba(255,255,255,0.06));
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  border-radius: 8px;
+  padding: 9px 20px;
+  font-size: 13px;
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+  transition: 0.15s;
+}
+.cancelBtn:hover { border-color: var(--color-primary, #7c3aed); }
+
+.saveBtn {
+  background: var(--color-primary, #7c3aed);
+  border: none;
+  border-radius: 8px;
+  padding: 9px 24px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.saveBtn:hover:not(:disabled) { opacity: 0.85; }
+.saveBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── 결과 화면 ── */
+.resultBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 24px;
+  text-align: center;
+}
+.resultIcon { font-size: 48px; }
+.resultTitle { font-size: 20px; font-weight: 700; color: var(--text-primary, #e2e8f0); }
+.resultStats { display: flex; gap: 16px; align-items: center; }
+.resultSuccess {
+  font-size: 22px;
+  font-weight: 700;
+  color: #22c55e;
+}
+.resultSkip {
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+}
+.resultBook {
+  font-size: 14px;
+  color: var(--text-secondary, #94a3b8);
+}
+.resultBook strong { color: #a78bfa; }
