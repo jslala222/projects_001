@@ -1,0 +1,63 @@
+<  현재 진행중인  프로그램 이름 및 경로 >
+
+나만의 레시피
+
+배포 URL   
+https://dsuc-recipe-01.vercel.app/
+
+C:\Users\User\Desktop\제미나이 3\연습\Antigravity\my-recipe
+
+
+인력관리 프로그램
+
+배포 URL   
+
+https://workforce-management-brown.vercel.app/
+https://boss-final-app.vercel.app/
+
+C:\Users\User\Desktop\제미나이 3\연습\Antigravity\workforce-management
+
+
+주식 검색 프로그램
+
+배포 URL   
+
+C:\Users\User\Desktop\제미나이 3\연습\Antigravity\stock-hunter
+
+
+캐디관리 프로그램
+
+배포 URL   
+https://golf-caddy-pro.vercel.app/
+
+C:\Users\User\Desktop\제미나이 3\연습\Antigravity\golf-caddy
+
+캐디순번 예측프로그램   ( 미완성 )
+
+C:\Users\User\Desktop\제미나이 3\연습\Antigravity\golf-caddy-turn-master
+
+
+농장관리 프로그램
+
+supabase    -    heerayun0712    - 
+
+project name :   pro_2
+
+database passwords  :   @@0401dsuc@@
+
+
+배포 URL   
+
+https://farm-manager-chi.vercel.app/login
+
+
+C:\Users\User\Desktop\제미나이 3\연습\claude\projects_001\farm-manager
+
+
+빌딩관리 프로그램
+
+배포 URL   
+
+
+
+C:\Users\User\Desktop\제미나이 3\연습\VS_CODE\BMS

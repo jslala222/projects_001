@@ -234,7 +234,9 @@ class DataStore {
     addressBookId?: string | null,
     search?: string,
     sortBy: "name" | "created_at" | "join_date" | "gender" | "marketing_agree" = "name",
-    sortDir: "asc" | "desc" = "asc"
+    sortDir: "asc" | "desc" = "asc",
+    filterGroupId?: string | null,
+    filterTags?: string[]
   ): Promise<{ contacts: Contact[]; total: number }> {
     const tenantId = await getTenantId();
     const from = page * pageSize;
@@ -251,6 +253,12 @@ class DataStore {
     }
     if (search && search.trim()) {
       q = q.or(`name.ilike.%${search.trim()}%,phone.ilike.%${search.trim()}%`);
+    }
+    if (filterGroupId) {
+      q = q.contains("group_ids", [filterGroupId]);
+    }
+    if (filterTags && filterTags.length > 0) {
+      q = q.overlaps("interests", filterTags);
     }
 
     const { data, error, count } = await q
@@ -274,6 +282,21 @@ class DataStore {
     }
     const { count } = await q;
     return count || 0;
+  }
+
+  // contacts의 interests 필드에서 유니크 태그 목록 추출
+  async getAllTags(): Promise<string[]> {
+    const tenantId = await getTenantId();
+    const { data } = await supabase
+      .from(TABLES.CONTACTS)
+      .select("interests")
+      .eq("tenant_id", tenantId)
+      .not("interests", "is", null);
+    const tagSet = new Set<string>();
+    (data || []).forEach(row => {
+      ((row.interests as string[]) || []).forEach((t: string) => { if (t) tagSet.add(t); });
+    });
+    return Array.from(tagSet).sort((a, b) => a.localeCompare(b, "ko"));
   }
 
   async getContactsByGroup(groupId: string): Promise<Contact[]> {

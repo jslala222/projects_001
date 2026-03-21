@@ -20,4 +20,5 @@ export const TABLES = {
   SEND_LOGS: "b-messenger_send_logs",
   API_KEYS: "b-messenger_api_keys",
   SUBSCRIPTIONS: "b-messenger_subscriptions",
+  ADDRESS_BOOKS: "b-messenger_address_books",
 } as const;

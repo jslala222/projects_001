@@ -13,7 +13,8 @@ import styles from "@/styles/Sidebar.module.css";
 const mainMenus = [
   { href: "/", icon: "📊", label: "대시보드" },
   { href: "/contacts", icon: "📇", label: "주소록" },
-  { href: "/customers", icon: "💎", label: "고객 관리", premiumOnly: true },
+  { href: "/customers", icon: "💎", label: "고객 관리", freeBlocked: true },
+  { href: "/groups", icon: "👥", label: "그룹 관리", freeBlocked: true },
   { href: "/messages", icon: "✉️", label: "메시지 작성" },
   { href: "/campaigns", icon: "📋", label: "발송 이력" },
 ];
@@ -41,9 +42,10 @@ export default function Sidebar() {
   }
 
   // 메뉴 노출 여부 및 잠금 여부 판단 함수
-  const renderMenuItem = (menu: { href: string; icon: string; label: string; premiumOnly?: boolean }) => {
-    // 🔒 테스트를 위해 isAdmin 체크를 잠시 빼거나, 명시적으로 plan 조건을 더 엄격하게 체크
-    const isLocked = menu.premiumOnly && plan !== "enterprise" && isAdmin !== true;
+  const renderMenuItem = (menu: { href: string; icon: string; label: string; premiumOnly?: boolean; freeBlocked?: boolean }) => {
+    const isLocked =
+      (menu.premiumOnly && plan !== "enterprise" && !isAdmin) ||
+      (menu.freeBlocked && plan === "free" && !isAdmin);
     
     return (
       <Link
@@ -68,7 +70,7 @@ export default function Sidebar() {
           )}
         </span>
         {menu.label}
-        {isLocked && <span style={{ fontSize: 10, marginLeft: "auto", opacity: 0.6 }}>UPGRADE</span>}
+        {isLocked && <span style={{ fontSize: 10, marginLeft: "auto", opacity: 0.6 }}>{menu.freeBlocked ? "PRO+" : "UPGRADE"}</span>}
       </Link>
     );
   };

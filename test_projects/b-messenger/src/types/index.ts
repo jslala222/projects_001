@@ -14,6 +14,8 @@ export type Customer = {
   postal_code?: string | null;
   created_at: string;
   updated_at: string;
+  group_ids?: string[];
+  address_book_id?: string | null;
 };
 
 export type CustomerFormData = {
@@ -39,6 +41,10 @@ export type Group = {
   created_at: string;
   updated_at: string;
   member_count?: number;
+  parent_id?: string | null;
+  depth?: number;
+  path?: string;
+  children?: Group[];
 };
 
 export type CustomerGroup = {

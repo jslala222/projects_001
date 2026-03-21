@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
-import { Users2, Plus, Pencil, Trash2, UserPlus, X, Search } from "lucide-react";
+import { useState, useTransition, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { Users2, Plus, Pencil, Trash2, UserPlus, X, Search, ChevronRight, ChevronDown, FolderPlus } from "lucide-react";
 import { toast } from "sonner";
 import type { Group, Customer } from "@/types";
+import { dataStore, type AddressBook } from "@/lib/store";
 import {
   createGroup,
   updateGroup,
@@ -15,33 +17,53 @@ import {
 import { getCustomers } from "@/app/actions/customers";
 import { checkPhoneType, PHONE_TYPE_LABEL, PHONE_TYPE_BADGE_CLASS } from "@/lib/phoneUtils";
 import { formatPhone } from "@/lib/phoneUtils";
+import styles from "@/styles/groups.module.css";
 
 const GROUP_COLORS = [
   "#ef4444", "#f97316", "#eab308", "#22c55e",
   "#14b8a6", "#3b82f6", "#8b5cf6", "#ec4899",
 ];
 
+// flat 배열 → 트리 구조 변환
+function buildTree(groups: Group[]): Group[] {
+  const map = new Map<string, Group>();
+  groups.forEach((g) => map.set(g.id, { ...g, children: [] }));
+  const roots: Group[] = [];
+  map.forEach((g) => {
+    if (g.parent_id && map.has(g.parent_id)) {
+      map.get(g.parent_id)!.children!.push(g);
+    } else {
+      roots.push(g);
+    }
+  });
+  return roots;
+}
+
 /* ──────────────────────── 그룹 폼 모달 ──────────────────────── */
 function GroupFormModal({
   group,
+  parentGroup,
   onClose,
   onSave,
 }: {
   group?: Group | null;
+  parentGroup?: Group | null;
   onClose: () => void;
   onSave: () => void;
 }) {
   const [name, setName] = useState(group?.name ?? "");
   const [desc, setDesc] = useState(group?.description ?? "");
-  const [color, setColor] = useState(group?.color ?? GROUP_COLORS[0]);
+  const [color, setColor] = useState(group?.color ?? (parentGroup?.color ?? GROUP_COLORS[0]));
   const [pending, startTransition] = useTransition();
+
+  const depthLabel = ["최상위", "대", "중", "소"][parentGroup ? (parentGroup.depth ?? 0) + 1 : 0] ?? "소";
 
   const handleSubmit = () => {
     if (!name.trim()) return toast.error("그룹 이름을 입력하세요");
     startTransition(async () => {
       const result = group
         ? await updateGroup(group.id, name.trim(), desc, color)
-        : await createGroup(name.trim(), desc, color);
+        : await createGroup(name.trim(), desc, color, parentGroup?.id ?? null);
       if (result.error) {
         toast.error(result.error);
       } else {
@@ -52,63 +74,73 @@ function GroupFormModal({
     });
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold">{group ? "그룹 수정" : "새 그룹"}</h2>
-          <button onClick={onClose}><X className="w-5 h-5" /></button>
+  return createPortal(
+    <div className={styles.overlay}>
+      <div className={styles.modal}>
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>
+            {group ? "그룹 수정" : `새 그룹`}
+            {!group && parentGroup && (
+              <span className={styles.parentBadge} style={{ borderColor: parentGroup.color, color: parentGroup.color }}>
+                {parentGroup.name} 하위
+              </span>
+            )}
+            {!group && !parentGroup && (
+              <span className={styles.depthBadge}>최상위</span>
+            )}
+          </h2>
+          <button className={styles.modalCloseBtn} onClick={onClose}><X size={18} /></button>
         </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">그룹 이름 *</label>
+        <div className={styles.modalBody}>
+          {parentGroup && (
+            <div className={styles.parentInfo}>
+              <span style={{ width: 10, height: 10, borderRadius: "50%", background: parentGroup.color, display: "inline-block", marginRight: 6 }} />
+              <span className={styles.parentInfoText}>{depthLabel}단계 그룹 — <strong>{parentGroup.name}</strong> 하위에 생성됩니다</span>
+            </div>
+          )}
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>그룹 이름 *</label>
             <input
-              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={styles.formInput}
               placeholder="그룹 이름"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
-          <div>
-            <label className="text-sm font-medium">설명</label>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>설명</label>
             <input
-              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={styles.formInput}
               placeholder="그룹 설명 (선택)"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
             />
           </div>
-          <div>
-            <label className="text-sm font-medium">색상</label>
-            <div className="mt-2 flex gap-2 flex-wrap">
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>색상</label>
+            <div className={styles.colorPicker}>
               {GROUP_COLORS.map((c) => (
                 <button
                   key={c}
                   onClick={() => setColor(c)}
-                  className="w-8 h-8 rounded-full ring-offset-2 transition-all"
-                  style={{
-                    backgroundColor: c,
-                    outline: color === c ? `3px solid ${c}` : "none",
-                  }}
+                  className={`${styles.colorSwatch} ${color === c ? styles.colorSwatchActive : ""}`}
+                  style={{ backgroundColor: c }}
                 />
               ))}
             </div>
           </div>
         </div>
 
-        <div className="mt-6 flex gap-2 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg">취소</button>
-          <button
-            onClick={handleSubmit}
-            disabled={pending}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg disabled:opacity-50"
-          >
+        <div className={styles.modalFooter}>
+          <button onClick={onClose} className={styles.btnCancel}>취소</button>
+          <button onClick={handleSubmit} disabled={pending} className={styles.btnSave}>
             {pending ? "저장 중..." : "저장"}
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -116,9 +148,15 @@ function GroupFormModal({
 function MembersModal({
   group,
   onClose,
+  onMembersChanged,
+  allGroups,
+  addressBooks,
 }: {
   group: Group;
   onClose: () => void;
+  onMembersChanged: () => void;
+  allGroups: Group[];
+  addressBooks: AddressBook[];
 }) {
   const [members, setMembers] = useState<Customer[]>([]);
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
@@ -127,12 +165,17 @@ function MembersModal({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const [loaded, setLoaded] = useState(false);
+  const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+  const [dupWarning, setDupWarning] = useState<{
+    show: boolean;
+    dups: { id: string; name: string; groups: string[] }[];
+  }>({ show: false, dups: [] });
 
-  const load = () => {
+  const load = (bookId?: string | null) => {
     startTransition(async () => {
       const [m, c] = await Promise.all([
         getGroupMembers(group.id),
-        getCustomers({ pageSize: 1000 }),
+        getCustomers({ pageSize: 2000, addressBookId: bookId ?? undefined }),
       ]);
       setMembers((m.data ?? []) as Customer[]);
       setAllCustomers((c.data ?? []) as Customer[]);
@@ -141,15 +184,18 @@ function MembersModal({
   };
 
   useEffect(() => {
-    load();
+    load(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group.id]);
 
   if (!loaded) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 text-center">불러오는 중...</div>
-      </div>
+    return createPortal(
+      <div className={styles.overlay}>
+        <div className={`${styles.modal} ${styles.modalLg}`} style={{ minHeight: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <p style={{ color: "#64748b" }}>불러오는 중...</p>
+        </div>
+      </div>,
+      document.body
     );
   }
 
@@ -165,12 +211,12 @@ function MembersModal({
       else {
         toast.success("멤버를 제거했습니다");
         setMembers((prev) => prev.filter((m) => m.id !== customerId));
+        onMembersChanged();
       }
     });
   };
 
-  const handleAdd = () => {
-    if (selected.size === 0) return toast.error("추가할 고객을 선택하세요");
+  const doAdd = () => {
     startTransition(async () => {
       const r = await addCustomersToGroup(group.id, Array.from(selected));
       if (r.error) toast.error(r.error);
@@ -180,136 +226,427 @@ function MembersModal({
         setTab("members");
         const m = await getGroupMembers(group.id);
         setMembers((m.data ?? []) as Customer[]);
+        onMembersChanged();
       }
     });
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: group.color }} />
-            {group.name} 멤버 관리
-          </h2>
-          <button onClick={onClose}><X className="w-5 h-5" /></button>
-        </div>
+  const handleAddClick = () => {
+    if (selected.size === 0) return toast.error("추가할 고객을 선택하세요");
+    const selectedCustomers = allCustomers.filter((c) => selected.has(c.id));
+    const dups = selectedCustomers
+      .filter((c) => (c.group_ids ?? []).length > 0)
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        groups: (c.group_ids ?? [])
+          .map((gid) => allGroups.find((g) => g.id === gid)?.name)
+          .filter(Boolean) as string[],
+      }))
+      .filter((d) => d.groups.length > 0);
 
-        <div className="flex border-b mb-4">
-          <button
-            onClick={() => setTab("members")}
-            className={`px-4 py-2 text-sm font-medium ${tab === "members" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
-          >
-            멤버 목록 ({members.length})
-          </button>
-          <button
-            onClick={() => setTab("add")}
-            className={`px-4 py-2 text-sm font-medium ${tab === "add" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
-          >
-            고객 추가
-          </button>
-        </div>
+    if (dups.length > 0) {
+      setDupWarning({ show: true, dups });
+    } else {
+      doAdd();
+    }
+  };
 
-        {tab === "members" && (
-          <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
-            {members.length === 0 && <p className="text-sm text-gray-400 text-center py-8">멤버가 없습니다</p>}
-            {members.map((m) => {
-              return (
-                <div key={m.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50">
-                  <div>
-                    <p className="text-sm font-medium">{m.name ?? "-"}</p>
-                    <p className="text-xs text-gray-500 font-mono">{m.phone ? formatPhone(m.phone) : "-"}</p>
-                  </div>
-                  <button
-                    onClick={() => handleRemove(m.id)}
-                    className="text-red-400 hover:text-red-600"
-                    disabled={pending}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              );
-            })}
+  const handleBookTab = (bookId: string | null) => {
+    setSelectedBookId(bookId);
+    setSelected(new Set());
+    setSearch("");
+    setLoaded(false);
+    load(bookId);
+  };
+
+  return createPortal(
+    <>
+      <div className={styles.overlay}>
+        <div className={`${styles.modal} ${styles.modalLg}`}>
+          <div className={styles.modalHeader}>
+            <h2 className={styles.modalTitle}>
+              <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: "50%", backgroundColor: group.color, flexShrink: 0 }} />
+              {group.name} 멤버 관리
+            </h2>
+            <button className={styles.modalCloseBtn} onClick={onClose}><X size={18} /></button>
           </div>
-        )}
 
-        {tab === "add" && (
-          <div>
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm"
-                placeholder="이름 또는 전화번호 검색"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+          <div className={styles.modalBody}>
+            <div className={styles.tabs}>
+              <button
+                onClick={() => setTab("members")}
+                className={`${styles.tab} ${tab === "members" ? styles.tabActive : ""}`}
+              >
+                멤버 목록 ({members.length})
+              </button>
+              <button
+                onClick={() => setTab("add")}
+                className={`${styles.tab} ${tab === "add" ? styles.tabActive : ""}`}
+              >
+                고객 추가
+              </button>
             </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto mb-3 custom-scrollbar">
-              {candidates.length === 0 && <p className="text-sm text-gray-400 text-center py-4">추가할 고객이 없습니다</p>}
-              {candidates.map((c) => {
-                const pType = checkPhoneType(c.phone);
-                return (
-                  <label key={c.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(c.id)}
-                      onChange={(e) => {
-                        const next = new Set(selected);
-                        if (e.target.checked) next.add(c.id); else next.delete(c.id);
-                        setSelected(next);
-                      }}
-                      className="w-4 h-4"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{c.name}</p>
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-xs text-gray-500 font-mono">{formatPhone(c.phone)}</p>
-                        {pType !== "mobile" && (
-                          <span className={`text-xs px-1 py-0.5 rounded ${PHONE_TYPE_BADGE_CLASS[pType]}`}>
-                            {PHONE_TYPE_LABEL[pType]}
-                          </span>
-                        )}
-                      </div>
+
+            {tab === "members" && (
+              <div className={styles.memberList}>
+                {members.length === 0 && <p className={styles.emptyState}>멤버가 없습니다</p>}
+                {members.map((m) => (
+                  <div key={m.id} className={styles.memberRow}>
+                    <div>
+                      <p className={styles.memberName}>{m.name ?? "-"}</p>
+                      <p className={styles.memberPhone}>{m.phone ? formatPhone(m.phone) : "-"}</p>
                     </div>
-                  </label>
-                );
-              })}
-            </div>
-            <button
-              onClick={handleAdd}
-              disabled={pending || selected.size === 0}
-              className="w-full py-2 bg-blue-600 text-white text-sm rounded-lg disabled:opacity-50"
-            >
-              {pending ? "추가 중..." : `${selected.size}명 추가`}
-            </button>
+                    <button
+                      onClick={() => handleRemove(m.id)}
+                      className={styles.removeMemberBtn}
+                      disabled={pending}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {tab === "add" && (
+              <div>
+                {/* 주소록 탭 필터 */}
+                {addressBooks.length > 0 && (
+                  <div className={styles.bookTabs}>
+                    <button
+                      onClick={() => handleBookTab(null)}
+                      className={`${styles.bookTab} ${selectedBookId === null ? styles.bookTabActive : ""}`}
+                    >
+                      전체
+                    </button>
+                    {addressBooks.map((ab) => (
+                      <button
+                        key={ab.id}
+                        onClick={() => handleBookTab(ab.id)}
+                        className={`${styles.bookTab} ${selectedBookId === ab.id ? styles.bookTabActive : ""}`}
+                      >
+                        {ab.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className={styles.searchWrap}>
+                  <Search size={14} className={styles.searchIcon} />
+                  <input
+                    className={styles.searchInput}
+                    placeholder="이름 또는 전화번호 검색"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+                <div className={styles.memberList}>
+                  {candidates.length === 0 && <p className={styles.emptyState}>추가할 고객이 없습니다</p>}
+                  {candidates.map((c) => {
+                    const pType = checkPhoneType(c.phone);
+                    const existingGroups = (c.group_ids ?? [])
+                      .map((gid) => allGroups.find((g) => g.id === gid))
+                      .filter(Boolean) as Group[];
+                    return (
+                      <label key={c.id} className={styles.candidateRow}>
+                        <input
+                          type="checkbox"
+                          checked={selected.has(c.id)}
+                          onChange={(e) => {
+                            const next = new Set(selected);
+                            if (e.target.checked) next.add(c.id); else next.delete(c.id);
+                            setSelected(next);
+                          }}
+                          className={styles.candidateCheckbox}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p className={styles.memberName}>{c.name}</p>
+                          <p className={styles.memberPhone}>
+                            {formatPhone(c.phone)}
+                            {pType !== "mobile" && (
+                              <span className={`${styles.phoneBadge} ${PHONE_TYPE_BADGE_CLASS[pType]}`}>
+                                {PHONE_TYPE_LABEL[pType]}
+                              </span>
+                            )}
+                          </p>
+                          {existingGroups.length > 0 && (
+                            <div className={styles.groupBadgeRow}>
+                              {existingGroups.map((g) => (
+                                <span
+                                  key={g.id}
+                                  className={styles.groupBadge}
+                                  style={{ borderColor: g.color, color: g.color }}
+                                >
+                                  {g.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={handleAddClick}
+                  disabled={pending || selected.size === 0}
+                  className={styles.addMembersBtn}
+                >
+                  {pending ? "추가 중..." : `${selected.size}명 추가`}
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
-    </div>
+
+      {/* 중복 그룹 확인 모달 */}
+      {dupWarning.show && (
+        <div className={styles.overlay} style={{ zIndex: 1100 }}>
+          <div className={styles.modal} style={{ maxWidth: 420 }}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>⚠️ 중복 그룹 안내</h2>
+              <button
+                className={styles.modalCloseBtn}
+                onClick={() => setDupWarning({ show: false, dups: [] })}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p className={styles.dupDesc}>아래 고객님은 이미 다른 그룹에 추가되어 있습니다.</p>
+              <ul className={styles.dupList}>
+                {dupWarning.dups.map((d) => (
+                  <li key={d.id} className={styles.dupItem}>
+                    <strong>{d.name}님</strong>은{" "}
+                    {d.groups.map((gname, i) => (
+                      <span key={i} className={styles.dupGroupTag}>{gname}</span>
+                    ))}{" "}
+                    에 이미 추가되어 있습니다.
+                  </li>
+                ))}
+              </ul>
+              <p className={styles.dupConfirmText}>그래도 이 그룹에 추가하시겠습니까?</p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                onClick={() => setDupWarning({ show: false, dups: [] })}
+                className={styles.btnCancel}
+              >
+                취소
+              </button>
+              <button
+                onClick={() => { setDupWarning({ show: false, dups: [] }); doAdd(); }}
+                className={styles.btnSave}
+              >
+                추가하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>,
+    document.body
   );
 }
 
 /* ──────────────────────── 메인 컴포넌트 ──────────────────────── */
-export default function GroupsClient({ initialGroups }: { initialGroups: Group[] }) {
+const PLAN_LIMITS: Record<string, number> = {
+  free: 0,
+  starter: 5,
+  pro: 20,
+  enterprise: Infinity,
+};
+
+/* ─────────────────── 트리 노드 (재귀) ─────────────────── */
+const DEPTH_LABELS = ["최상위", "대", "중", "소"];
+const DEPTH_COLORS = ["#6366f1", "#0ea5e9", "#22c55e", "#f59e0b"];
+
+function GroupTreeNode({
+  node,
+  expandedIds,
+  onToggle,
+  onEdit,
+  onDelete,
+  onAddChild,
+  onMembers,
+  deletingId,
+}: {
+  node: Group;
+  expandedIds: Set<string>;
+  onToggle: (id: string) => void;
+  onEdit: (g: Group) => void;
+  onDelete: (g: Group) => void;
+  onAddChild: (g: Group) => void;
+  onMembers: (g: Group) => void;
+  deletingId: string | null;
+}) {
+  const depth = node.depth ?? 0;
+  const hasChildren = (node.children?.length ?? 0) > 0;
+  const isExpanded = expandedIds.has(node.id);
+  const depthLabel = DEPTH_LABELS[depth] ?? "소";
+  const depthColor = DEPTH_COLORS[depth] ?? "#94a3b8";
+
+  return (
+    <div className={depth === 0 ? styles.treeNodeWrapRoot : styles.treeNodeWrap}>
+      {/* 행 */}
+      <div
+        className={styles.treeRow}
+        style={{ paddingLeft: `${12 + depth * 28}px` }}
+      >
+        {/* 토글 버튼 */}
+        <button
+          className={styles.treeToggleBtn}
+          onClick={() => hasChildren && onToggle(node.id)}
+          style={{ visibility: hasChildren ? "visible" : "hidden" }}
+          title={isExpanded ? "접기" : "펼치기"}
+        >
+          {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+        </button>
+
+        {/* 색상 점 */}
+        <span
+          className={styles.treeColorDot}
+          style={{ backgroundColor: node.color }}
+        />
+
+        {/* 깊이 배지 */}
+        <span
+          className={styles.treeDepthBadge}
+          style={{ backgroundColor: depthColor + "22", color: depthColor, borderColor: depthColor + "55" }}
+        >
+          {depthLabel}
+        </span>
+
+        {/* 이름 */}
+        <span className={styles.treeNodeName}>{node.name}</span>
+
+        {/* 설명 */}
+        {node.description && (
+          <span className={styles.treeNodeDesc}>{node.description}</span>
+        )}
+
+        {/* 멤버 수 */}
+        <span className={styles.treeMemberCount}>
+          {node.member_count ?? 0}명
+        </span>
+
+        {/* 액션 버튼들 */}
+        <div className={styles.treeActions}>
+          {depth < 3 && (
+            <button
+              className={`${styles.treeActionBtn} ${styles.treeActionAdd}`}
+              onClick={() => onAddChild(node)}
+              title="하위 그룹 추가"
+            >
+              <FolderPlus size={14} />
+              <span>하위</span>
+            </button>
+          )}
+          <button
+            className={`${styles.treeActionBtn} ${styles.treeActionMembers}`}
+            onClick={() => onMembers(node)}
+            title="멤버 관리"
+          >
+            <UserPlus size={14} />
+            <span>멤버</span>
+          </button>
+          <button
+            className={`${styles.treeActionBtn} ${styles.treeActionEdit}`}
+            onClick={() => onEdit(node)}
+            title="수정"
+          >
+            <Pencil size={13} />
+          </button>
+          <button
+            className={`${styles.treeActionBtn} ${styles.treeActionDelete}`}
+            onClick={() => onDelete(node)}
+            disabled={deletingId === node.id}
+            title="삭제"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* 자식 노드 */}
+      {hasChildren && isExpanded && (
+        <div className={styles.treeChildren}>
+          {node.children!.map((child) => (
+            <GroupTreeNode
+              key={child.id}
+              node={child}
+              expandedIds={expandedIds}
+              onToggle={onToggle}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onAddChild={onAddChild}
+              onMembers={onMembers}
+              deletingId={deletingId}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────── 메인 컴포넌트 ─────────────────── */
+export default function GroupsClient({
+  initialGroups,
+  plan = "free",
+  onRefresh,
+}: {
+  initialGroups: Group[];
+  plan?: string;
+  onRefresh?: () => void;
+}) {
   const [groups, setGroups] = useState<Group[]>(initialGroups);
   const [showForm, setShowForm] = useState(false);
   const [editGroup, setEditGroup] = useState<Group | null>(null);
+  const [addChildGroup, setAddChildGroup] = useState<Group | null>(null);
   const [membersGroup, setMembersGroup] = useState<Group | null>(null);
+  const [addressBooks, setAddressBooks] = useState<AddressBook[]>([]);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [pending, startTransition] = useTransition();
 
-  const reload = () => {
+  useEffect(() => {
+    dataStore.getAddressBooks().then(setAddressBooks);
+  }, []);
+
+  const maxGroups = PLAN_LIMITS[plan] ?? 0;
+  const canAddMore = groups.length < maxGroups;
+
+  const reload = useCallback(() => {
     startTransition(async () => {
       const { getGroups } = await import("@/app/actions/groups");
       const r = await getGroups();
       if (!r.error) setGroups(r.data as Group[]);
+      onRefresh?.();
+    });
+  }, [onRefresh]);
+
+  const handleToggle = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
     });
   };
 
   const handleDelete = (group: Group) => {
-    if (!confirm(`"${group.name}" 그룹을 삭제할까요?`)) return;
+    const hasChildren = groups.some((g) => g.parent_id === group.id);
+    const msg = hasChildren
+      ? `"${group.name}" 그룹과 모든 하위 그룹을 삭제할까요?\n하위 그룹의 멤버도 모두 해제됩니다.`
+      : `"${group.name}" 그룹을 삭제할까요?`;
+    if (!confirm(msg)) return;
+    setDeletingId(group.id);
     startTransition(async () => {
       const r = await deleteGroup(group.id);
+      setDeletingId(null);
       if (r.error) toast.error(r.error);
       else {
         toast.success("그룹을 삭제했습니다");
@@ -318,82 +655,105 @@ export default function GroupsClient({ initialGroups }: { initialGroups: Group[]
     });
   };
 
+  const openAddRoot = () => {
+    setEditGroup(null);
+    setAddChildGroup(null);
+    setShowForm(true);
+  };
+
+  const openAddChild = (parent: Group) => {
+    setEditGroup(null);
+    setAddChildGroup(parent);
+    setShowForm(true);
+    // 부모 노드를 펼침
+    setExpandedIds((prev) => new Set([...prev, parent.id]));
+  };
+
+  const openEdit = (group: Group) => {
+    setEditGroup(group);
+    setAddChildGroup(null);
+    setShowForm(true);
+  };
+
+  const treeRoots = buildTree(groups);
+
   return (
-    <div className="p-6">
+    <div className={styles.page}>
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Users2 className="w-6 h-6 text-blue-600" />
-          <h1 className="text-2xl font-bold text-gray-900">그룹 관리</h1>
-          <span className="text-sm text-gray-500">({groups.length}개)</span>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <h1 className={styles.headerTitle}>
+            <Users2 size={26} style={{ color: "var(--brand-primary)" }} />
+            그룹 관리
+            <span className={styles.headerCount}>({groups.length}개)</span>
+          </h1>
+          {maxGroups !== Infinity && (
+            <div className={styles.progressWrap}>
+              <div className={styles.progressBar}>
+                <div
+                  className={styles.progressFill}
+                  style={{
+                    width: `${Math.min((groups.length / maxGroups) * 100, 100)}%`,
+                    background: groups.length >= maxGroups ? "var(--error)" : "var(--brand-gradient)",
+                  }}
+                />
+              </div>
+              <span className={styles.progressLabel}>{groups.length}/{maxGroups}</span>
+            </div>
+          )}
         </div>
-        <div className="flex gap-2">
+        <div className={styles.headerRight}>
+          {!canAddMore && (
+            <a href="/pricing" className={styles.upgradeBtn}>
+              🔓 한도 업그레이드
+            </a>
+          )}
           <button
-            onClick={() => { setEditGroup(null); setShowForm(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+            onClick={openAddRoot}
+            disabled={!canAddMore}
+            className={styles.addBtn}
+            title={!canAddMore ? `${plan} 플랜 최대 ${maxGroups}개` : "최상위 그룹 추가"}
           >
-            <Plus className="w-4 h-4" />
-            새 그룹
+            <Plus size={16} />
+            + 최상위 그룹
           </button>
         </div>
       </div>
 
-      {/* 그룹 목록 */}
+      {/* 깊이 범례 */}
+      <div className={styles.depthLegend}>
+        {DEPTH_LABELS.map((label, i) => (
+          <span key={label} className={styles.depthLegendItem}>
+            <span
+              className={styles.depthLegendDot}
+              style={{ background: DEPTH_COLORS[i] }}
+            />
+            {label}
+          </span>
+        ))}
+      </div>
+
+      {/* 그룹 트리 */}
       {groups.length === 0 ? (
-        <div className="text-center py-20 text-gray-400">
-          <Users2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="text-lg">그룹이 없습니다</p>
-          <p className="text-sm mt-1">새 그룹을 만들어 고객을 관리해보세요</p>
+        <div className={styles.empty}>
+          <div className={styles.emptyIcon}>👥</div>
+          <p className={styles.emptyTitle}>그룹이 없습니다</p>
+          <p className={styles.emptyDesc}>최상위 그룹을 만들어 계층 구조를 구성해보세요</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {groups.map((group) => (
-            <div
-              key={group.id}
-              className="bg-white rounded-xl border shadow-sm p-5 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-4 h-4 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: group.color }}
-                  />
-                  <h3 className="font-semibold text-gray-900 truncate">{group.name}</h3>
-                </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => { setEditGroup(group); setShowForm(true); }}
-                    className="p-1.5 text-gray-400 hover:text-blue-600 rounded"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(group)}
-                    disabled={pending}
-                    className="p-1.5 text-gray-400 hover:text-red-600 rounded"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {group.description && (
-                <p className="text-xs text-gray-500 mb-3 line-clamp-2">{group.description}</p>
-              )}
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">
-                  <span className="font-semibold text-gray-900">{group.member_count ?? 0}</span>명
-                </span>
-                <button
-                  onClick={() => setMembersGroup(group)}
-                  className="flex items-center gap-1 text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100"
-                >
-                  <UserPlus className="w-3 h-3" />
-                  멤버 관리
-                </button>
-              </div>
-            </div>
+        <div className={styles.treeContainer}>
+          {treeRoots.map((node) => (
+            <GroupTreeNode
+              key={node.id}
+              node={node}
+              expandedIds={expandedIds}
+              onToggle={handleToggle}
+              onEdit={openEdit}
+              onDelete={handleDelete}
+              onAddChild={openAddChild}
+              onMembers={setMembersGroup}
+              deletingId={deletingId}
+            />
           ))}
         </div>
       )}
@@ -402,12 +762,19 @@ export default function GroupsClient({ initialGroups }: { initialGroups: Group[]
       {showForm && (
         <GroupFormModal
           group={editGroup}
-          onClose={() => { setShowForm(false); setEditGroup(null); }}
+          parentGroup={addChildGroup}
+          onClose={() => { setShowForm(false); setEditGroup(null); setAddChildGroup(null); }}
           onSave={reload}
         />
       )}
       {membersGroup && (
-        <MembersModal group={membersGroup} onClose={() => { setMembersGroup(null); reload(); }} />
+        <MembersModal
+          group={membersGroup}
+          onClose={() => { setMembersGroup(null); reload(); }}
+          onMembersChanged={reload}
+          allGroups={groups}
+          addressBooks={addressBooks}
+        />
       )}
     </div>
   );

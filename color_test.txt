@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>농장 앱 색상 미리보기</title>
+  <style>
+    /* 전체 배경 및 폰트 설정 */
+    body {
+      background-color: #275C41; /* 메인 배경 (짙은 녹색) */
+      color: #FBF8E6; /* 메인 텍스트 (밝은 아이보리) */
+      font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+      margin: 0;
+      padding: 40px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* 모바일 화면 크기의 미리보기 컨테이너 */
+    .mobile-preview {
+      width: 100%;
+      max-width: 380px;
+      position: relative;
+    }
+
+    /* 상단 헤더 영역 */
+    .header {
+      margin-bottom: 20px;
+    }
+    .date-text {
+      font-size: 14px;
+      color: #A5C0A7; /* 서브 텍스트 */
+      margin-bottom: 5px;
+    }
+    .greeting {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 0;
+    }
+
+    /* 알림 배지 */
+    .notification-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 40px;
+      height: 40px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .badge-dot {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 16px;
+      height: 16px;
+      background-color: #EE3B33; /* 알림 포인트 색상 */
+      border-radius: 50%;
+      font-size: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+    }
+
+    /* 날씨 정보 카드 */
+    .weather-card {
+      background-color: #3A6D53; /* 날씨 카드 배경 */
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .temp-main {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .temp-sub {
+      font-size: 14px;
+      color: #A5C0A7; /* 서브 텍스트 */
+    }
+
+    /* 하단 4개 항목 그리드 */
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .item-card {
+      background-color: #A0CF9F; /* 항목 카드 배경 */
+      border-radius: 12px;
+      padding: 15px 5px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .item-number {
+      color: #1A3D2A; /* 카드 내 숫자 색상 */
+      font-size: 18px;
+      font-weight: bold;
+      margin: 8px 0 4px 0;
+    }
+    .item-label {
+      color: #275C41; 
+      font-size: 11px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="mobile-preview">
+    <div class="header">
+      <div class="date-text">2026년 3월 4일 수요일</div>
+      <h1 class="greeting">안녕하세요, 김철수 농부님 👋</h1>
+    </div>
+
+    <div class="notification-badge">
+      🔔
+      <div class="badge-dot">2</div>
+    </div>
+
+    <div class="weather-card">
+      <div>
+        <div class="temp-main">⛅ 맑음 • 18°C</div>
+        <div class="temp-sub">최고 22°C / 최저 11°C</div>
+      </div>
+      <div class="temp-sub">💧 56% &nbsp; 💨 3m/s</div>
+    </div>
+
+    <div class="grid-container">
+      <div class="item-card">
+        <span>🌱</span>
+        <div class="item-number">12</div>
+        <div class="item-label">종<br>재배 작물</div>
+      </div>
+      <div class="item-card">
+        <span style="color: #49C985; font-size: 20px;">✅</span>
+        <div class="item-number">1/4</div>
+        <div class="item-label">개<br>오늘 작업</div>
+      </div>
+      <div class="item-card">
+        <span>🍓</span>
+        <div class="item-number">3</div>
+        <div class="item-label">동<br>수확 임박</div>
+      </div>
+      <div class="item-card">
+        <span>📦</span>
+        <div class="item-number">1.8</div>
+        <div class="item-label">톤<br>이달 수확</div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

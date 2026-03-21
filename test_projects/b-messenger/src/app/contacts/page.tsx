@@ -11,6 +11,8 @@ import AddressBookTabs from "@/components/AddressBookTabs";
 import ContactAddModal from "@/components/ContactAddModal";
 import CSVUploadModal from "@/components/CSVUploadModal";
 import styles from "@/styles/contacts.module.css";
+import { getGroups } from "@/app/actions/groups";
+import type { Group } from "@/types";
 
 const PAGE_SIZE = 20;
 
@@ -43,6 +45,13 @@ export default function ContactsPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [editContact, setEditContact] = useState<Contact | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // 그룹/태그 필터 (Pro 이상)
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [filterGroupId, setFilterGroupId] = useState<string | null>(null);
+  const [filterTag, setFilterTag] = useState<string | null>(null);
+  const [allTags, setAllTags] = useState<string[]>([]);
+
   // 2단계 경고: step1=경고확인, step2=텍스트입력확인
   const [deleteConfirm, setDeleteConfirm] = useState<{
     mode: "all" | "book";
@@ -53,11 +62,32 @@ export default function ContactsPage() {
     inputText: string;
   } | null>(null);
 
+  const isPro = plan === "pro" || plan === "enterprise";
+
+  // 그룹 목록 + 태그 목록 로드 (Pro 이상만)
+  useEffect(() => {
+    if (!authLoading && isPro) {
+      getGroups().then(({ data }) => setGroups(data ?? []));
+      dataStore.getAllTags().then(setAllTags);
+    }
+  }, [authLoading, isPro]);
+
   // 서버사이드 데이터 로드
-  const loadData = useCallback(async (page: number, bookId: string | null, searchText: string, si: number) => {
+  const loadData = useCallback(async (
+    page: number,
+    bookId: string | null,
+    searchText: string,
+    si: number,
+    groupId: string | null,
+    tag: string | null
+  ) => {
     const { sortBy, sortDir } = SORT_OPTIONS[si];
     const [result, books, totalAll] = await Promise.all([
-      dataStore.getContactsPaged(page, PAGE_SIZE, false, bookId, searchText, sortBy, sortDir),
+      dataStore.getContactsPaged(
+        page, PAGE_SIZE, false, bookId, searchText, sortBy, sortDir,
+        groupId ?? undefined,
+        tag ? [tag] : undefined
+      ),
       dataStore.getAddressBooks(),
       dataStore.getContactsCount(),
     ]);
@@ -65,16 +95,17 @@ export default function ContactsPage() {
     setTotalFiltered(result.total);
     setAddressBooks(books);
     setTotalContactCount(totalAll);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (authLoading) return;   // 인증 준비 전 호출 방지
-    loadData(currentPage, activeBookId, search, sortIdx);
-  }, [currentPage, activeBookId, search, sortIdx, loadData, authLoading]);
+    if (authLoading) return;
+    loadData(currentPage, activeBookId, search, sortIdx, filterGroupId, filterTag);
+  }, [currentPage, activeBookId, search, sortIdx, filterGroupId, filterTag, loadData, authLoading]);
 
   const refresh = useCallback(() => {
-    loadData(currentPage, activeBookId, search, sortIdx);
-  }, [loadData, currentPage, activeBookId, search, sortIdx]);
+    loadData(currentPage, activeBookId, search, sortIdx, filterGroupId, filterTag);
+  }, [loadData, currentPage, activeBookId, search, sortIdx, filterGroupId, filterTag]);
 
   // 탭 전환 시 페이지 초기화
   const handleTabChange = useCallback((bookId: string | null) => {
@@ -89,6 +120,23 @@ export default function ContactsPage() {
 
   function handleSortChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setSortIdx(Number(e.target.value));
+    setCurrentPage(0);
+  }
+
+  function handleGroupFilter(groupId: string | null) {
+    setFilterGroupId(groupId);
+    setCurrentPage(0);
+  }
+
+  function handleTagFilter(tag: string | null) {
+    setFilterTag(tag);
+    setCurrentPage(0);
+  }
+
+  function clearAllFilters() {
+    setFilterGroupId(null);
+    setFilterTag(null);
+    setSearch("");
     setCurrentPage(0);
   }
 
@@ -174,6 +222,91 @@ export default function ContactsPage() {
         onBooksChange={refresh}
         onDeleteCsvByBook={(bookId) => openDeleteConfirm("book", bookId)}
       />
+
+      {/* 그룹/태그 필터 패널 (Pro 이상) */}
+      {isPro && (groups.length > 0 || allTags.length > 0) && (
+        <div style={{
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+          alignItems: "center",
+          padding: "10px 0",
+          marginBottom: 8,
+        }}>
+          <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>필터:</span>
+
+          {/* 그룹 필터 */}
+          {groups.length > 0 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <button
+                onClick={() => handleGroupFilter(null)}
+                style={{
+                  fontSize: 12, padding: "4px 10px", borderRadius: 20,
+                  border: "1px solid var(--border-light)",
+                  background: !filterGroupId ? "var(--accent)" : "transparent",
+                  color: !filterGroupId ? "#fff" : "var(--text-secondary)",
+                  cursor: "pointer",
+                }}
+              >전체</button>
+              {groups.map(g => (
+                <button
+                  key={g.id}
+                  onClick={() => handleGroupFilter(filterGroupId === g.id ? null : g.id)}
+                  style={{
+                    fontSize: 12, padding: "4px 10px", borderRadius: 20,
+                    border: `1px solid ${g.color}40`,
+                    background: filterGroupId === g.id ? g.color : `${g.color}18`,
+                    color: filterGroupId === g.id ? "#fff" : g.color,
+                    cursor: "pointer",
+                    fontWeight: filterGroupId === g.id ? 600 : 400,
+                  }}
+                >
+                  {g.name} ({g.member_count ?? 0})
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* 태그 필터 */}
+          {allTags.length > 0 && (
+            <>
+              <span style={{ fontSize: 11, color: "var(--text-secondary)", margin: "0 4px" }}>|</span>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {allTags.slice(0, 10).map(tag => (
+                  <button
+                    key={tag}
+                    onClick={() => handleTagFilter(filterTag === tag ? null : tag)}
+                    style={{
+                      fontSize: 12, padding: "4px 10px", borderRadius: 20,
+                      border: "1px solid var(--border-light)",
+                      background: filterTag === tag ? "#6366f1" : "transparent",
+                      color: filterTag === tag ? "#fff" : "var(--text-secondary)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* 필터 초기화 */}
+          {(filterGroupId || filterTag || search) && (
+            <button
+              onClick={clearAllFilters}
+              style={{
+                fontSize: 12, padding: "4px 10px", borderRadius: 20,
+                border: "1px solid #f87171",
+                color: "#f87171", background: "transparent",
+                cursor: "pointer", marginLeft: 4,
+              }}
+            >
+              × 초기화
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 검색 + 정렬 */}
       <div className={styles.toolbar}>

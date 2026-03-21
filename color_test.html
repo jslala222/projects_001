@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>농장 앱 디자인 재검토 버전</title>
+  <style>
+    /* 배경은 단순 단색이 아닌, 위에서 아래로 미세하게 어두워지는 그라데이션 적용 */
+    body {
+      background: linear-gradient(180deg, #3A835A 0%, #31764E 100%); 
+      color: #FFFFFF;
+      font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+      margin: 0;
+      padding: 0; /* 모바일 꽉 찬 화면을 위해 패딩 제거 */
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    /* 모바일 화면 프레임 */
+    .mobile-preview {
+      width: 100%;
+      max-width: 400px;
+      position: relative;
+      padding: 40px 20px 0 20px; /* 내부 여백 재설정 */
+      overflow: hidden;
+    }
+
+    /* 상단 헤더 영역 */
+    .header {
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 2;
+    }
+    .date-text {
+      font-size: 14px;
+      color: #A9D6BA; /* 원본에 가까운 밝은 민트색 */
+      margin-bottom: 5px;
+    }
+    .greeting {
+      font-size: 24px;
+      font-weight: 800; /* 글씨 굵기 더 두껍게 */
+      margin: 0;
+      letter-spacing: -0.5px;
+    }
+
+    /* 알림 배지 */
+    .notification-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 44px;
+      height: 44px;
+      background-color: rgba(255, 255, 255, 0.15); /* 반투명 배경 */
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 20px;
+    }
+    .badge-dot {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      width: 18px;
+      height: 18px;
+      background-color: #FF3B30;
+      border-radius: 50%;
+      font-size: 11px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      border: 2px solid #3A835A; /* 주변과 구분되는 테두리 추가 */
+    }
+
+    /* 날씨 정보 카드 (반투명 글래스 효과) */
+    .weather-card {
+      background-color: rgba(255, 255, 255, 0.12); /* 흰색 반투명 */
+      border: 1px solid rgba(255, 255, 255, 0.05); /* 은은한 테두리 */
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 2;
+      position: relative;
+    }
+    .temp-main {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .temp-sub {
+      font-size: 13px;
+      color: #C0E0CE; /* 원본의 연한 글씨색 반영 */
+    }
+
+    /* 하단 4개 항목 그리드 */
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      z-index: 2;
+      position: relative;
+    }
+    .item-card {
+      background-color: rgba(255, 255, 255, 0.22); /* 단색이 아닌 반투명 적용 */
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 16px 5px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* 미세한 그림자 */
+    }
+    
+    /* 아이콘 스타일 보정 */
+    .icon-wrapper {
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+    .check-icon {
+      background-color: #49C985;
+      color: white;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .item-number {
+      color: #FFFFFF; /* 원본처럼 흰색으로 변경 */
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 4px;
+      letter-spacing: -0.5px;
+    }
+    .item-label {
+      color: #C0E0CE; /* 칙칙한 녹색에서 밝은 민트색으로 변경 */
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    /* 하단 하얀색 곡선 배경 (바텀 시트 느낌) */
+    .bottom-sheet {
+      position: absolute;
+      bottom: -50px;
+      left: 0;
+      width: 100%;
+      height: 120px;
+      background-color: #F8FAF9;
+      border-top-left-radius: 50% 20%;
+      border-top-right-radius: 50% 20%;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="mobile-preview">
+    <div class="header">
+      <div class="date-text">2026년 3월 4일 수요일</div>
+      <h1 class="greeting">안녕하세요, 김철수 농부님 👋</h1>
+      <div class="notification-badge">
+        🔔
+        <div class="badge-dot">2</div>
+      </div>
+    </div>
+
+    <div class="weather-card">
+      <div>
+        <div class="temp-main">⛅ 맑음 • 18°C</div>
+        <div class="temp-sub">최고 22°C / 최저 11°C</div>
+      </div>
+      <div class="temp-sub">💧 56% &nbsp; 💨 3m/s</div>
+    </div>
+
+    <div class="grid-container">
+      <div class="item-card">
+        <div class="icon-wrapper">🌱</div>
+        <div class="item-number">12</div>
+        <div class="item-label">종<br>재배 작물</div>
+      </div>
+      <div class="item-card">
+        <div class="icon-wrapper"><div class="check-icon">✓</div></div>
+        <div class="item-number">1/4</div>
+        <div class="item-label">개<br>오늘 작업</div>
+      </div>
+      <div class="item-card">
+        <div class="icon-wrapper">🍓</div>
+        <div class="item-number">3</div>
+        <div class="item-label">동<br>수확 임박</div>
+      </div>
+      <div class="item-card">
+        <div class="icon-wrapper">📦</div>
+        <div class="item-number">1.8</div>
+        <div class="item-label">톤<br>이달 수확</div>
+      </div>
+    </div>
+
+    <div class="bottom-sheet"></div>
+  </div>
+
+</body>
+</html>

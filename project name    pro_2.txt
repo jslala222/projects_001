@@ -1,0 +1,77 @@
+?çÏû•Í¥ÄÎ¶??ÑÎ°úÍ∑∏Îû®  
+
+heerayun0712
+
+
+project name :   pro_2
+
+database passwords  :   @@0401dsuc@@
+
+
+Project URL
+
+https://slguawnxxdmcscxkzwdo.supabase.co
+
+Publishable Key
+
+sb_publishable_DdXPd8mCE-JtXrwAdDHq2w_IwKM2ofm
+
+
+Anon Key (Legacy)
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsZ3Vhd254eGRtY3NjeGt6d2RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzNTM5NzIsImV4cCI6MjA4NjkyOTk3Mn0.gB1Sqiy247xyFD8gSBubCrWc_aJNV-v4hJArzDcw-JI
+
+service_role 
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsZ3Vhd254eGRtY3NjeGt6d2RvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTM1Mzk3MiwiZXhwIjoyMDg2OTI5OTcyfQ.yIZ4dN7tpHFL4C9ytBOgtWywp68Ij4tSuvMxi_t4qJ0
+
+
+https://farm-manager1.vercel.app/login
+
+https://github.com/jslala222/farm-manager
+
+=========================================
+
+deepseek    
+
+api   key   
+
+
+sk-35d1ba56d2d441c19e004bbac9059b59
+
+------------------------------------------------------------------------------
+
+Íµ¨Í? ?úÎ??òÏù¥  api ??
+
+AIzaSyCxUwFcQjzSR3cgzvmwi6y182nbUjsBHyM
+
+
+
+AIzaSyCxUwFcQjzSR3cgzvmwi6y182nbUjsBHyM
+
+curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent" \
+  -H 'Content-Type: application/json' \
+  -H 'X-goog-api-key: AIzaSyCxUwFcQjzSR3cgzvmwi6y182nbUjsBHyM' \
+  -X POST \
+  -d '{
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": "Explain how AI works in a few words"
+          }
+        ]
+      }
+    ]
+  }'
+
+
+-------------------------------------------------------------------------
+
+Roo Code   -   ?êÏÑú ?¨Ïö©??  claude api  key
+
+api   ?∞Î°ú ???¥Ïïº?úÎã§??.   ?ÑÎëë?àÎì§
+
+[API_KEY_REMOVED]
+
+

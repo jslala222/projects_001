@@ -1,0 +1,62 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "🔍 Git 히스토리 보기",
+      "type": "shell",
+      "command": "Show-GitHistory",
+      "args": [],
+      "options": {
+        "shell": {
+          "executable": "powershell",
+          "args": ["-NoExit", "-Command"]
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "clear": true,
+        "focus": true,
+        "title": "Git 히스토리"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🔍 Git 히스토리 — 전체 보기",
+      "type": "shell",
+      "command": "Show-GitHistory -All",
+      "args": [],
+      "options": {
+        "shell": {
+          "executable": "powershell",
+          "args": ["-NoExit", "-Command"]
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "clear": true,
+        "focus": true,
+        "title": "Git 히스토리 (전체)"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🔍 Git 히스토리 — 새 창으로",
+      "type": "shell",
+      "command": "Show-GitHistory -New",
+      "args": [],
+      "options": {
+        "shell": {
+          "executable": "powershell",
+          "args": ["-NoExit", "-Command"]
+        }
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
