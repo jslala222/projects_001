@@ -64,10 +64,13 @@ const plans = [
 ];
 
 export default function PricingPage() {
-  const { user, refreshProfile } = useAuth();
+  const { user, refreshProfile, paymentStatus } = useAuth();
   const [currentPlan, setCurrentPlan] = useState("free");
   const [changing, setChanging] = useState(false);
   const [toast, setToast] = useState("");
+  const [subscriptionEndDate, setSubscriptionEndDate] = useState<string | null>(null);
+  const [showDowngradeModal, setShowDowngradeModal] = useState(false);
+  const [selectedDowngradePlanId, setSelectedDowngradePlanId] = useState("");
 
   // 현재 플랜 가져오기
   useEffect(() => {
@@ -75,34 +78,148 @@ export default function PricingPage() {
       if (!user) return;
       const { data } = await supabase
         .from("b-messenger_users")
-        .select("plan")
+        .select("plan, subscription_end_date")
         .eq("id", user.id)
         .single();
       if (data?.plan) setCurrentPlan(data.plan);
+      if (data?.subscription_end_date) setSubscriptionEndDate(data.subscription_end_date);
     }
     load();
   }, [user]);
 
-  // 플랜 변경
+  const [showModal, setShowModal] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [depositorName, setDepositorName] = useState("");
+
+  // 플랜 변경 버튼 클릭 시
   async function handleChangePlan(planId: string) {
     if (!user || planId === currentPlan) return;
-    setChanging(true);
 
-    const { error } = await supabase
-      .from("b-messenger_users")
-      .update({ plan: planId })
-      .eq("id", user.id);
+    const selected = plans.find(p => p.id === planId);
+    if (!selected) return;
 
-    if (!error) {
-      setCurrentPlan(planId);
-      // 🔥 전역 인증 컨텍스트의 플랜 정보도 갱신하여 사이드바 등에 즉시 반영
-      await refreshProfile();
-      
-      const planName = plans.find((p) => p.id === planId)?.name || planId;
-      setToast(`✅ ${planName} 플랜으로 변경되었습니다!`);
-      setTimeout(() => setToast(""), 3000);
+    // 무료를 포함한 모든 플랜 변경은 handleSelectPlan으로 통합 처리 (다운그레이드 및 요금 계산 목적)
+    handleSelectPlan(planId);
+  }
+
+  const handleSelectPlan = (planId: string) => {
+    if (!user) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+    
+    // 예약 중복 차단: 이미 다운그레이드 예약이 있는지 확인
+    if (paymentStatus === "downgrade_reserved") {
+      alert("⚠️ 이미 다운그레이드 변경이 예약되어 있습니다.\n(예약 변경이나 취소가 필요하신 경우 관리자에게 문의하세요)");
+      return;
     }
 
+    if (currentPlan === planId) {
+      alert("이미 이용 중인 요금제입니다.");
+      return;
+    }
+
+    const currentPlanPrice = plans.find(p => p.id === currentPlan)?.price || 0;
+    const selectedPlanPrice = plans.find(p => p.id === planId)?.price || 0;
+
+    // 가격이 더 낮아지는 다운그레이드인지 확인
+    if (currentPlanPrice > selectedPlanPrice) {
+      setSelectedDowngradePlanId(planId);
+      setShowDowngradeModal(true);
+      return;
+    }
+
+    // 업그레이드일 경우 무통장 입금 모달 띄우기
+    setSelectedPlanId(planId);
+    setShowModal(true);
+  };
+
+  async function handleDowngrade(planId: string) {
+    if (!user) return;
+    setChanging(true);
+    const { error: userError } = await supabase
+      .from("b-messenger_users")
+      .update({
+        plan_request: planId,
+        payment_status: "downgrade_reserved",
+        plan_request_at: new Date().toISOString()
+      })
+      .eq("id", user.id);
+
+    if (userError) {
+      alert("오류가 발생했습니다: " + userError.message);
+      setChanging(false);
+      return;
+    }
+
+    // 다운그레이드는 입금 확인 없이 즉시 예약 로그 생성
+    await supabase
+      .from("b-messenger_payment_logs")
+      .insert({
+        user_id: user.id,
+        plan_name: planId,
+        amount: 0,
+        depositor_name: "자동예약(다운그레이드)",
+        status: "approved", // 승인 완료된 예약건
+        requested_at: new Date().toISOString(),
+        processed_at: new Date().toISOString()
+      });
+
+    alert(`다음 결제일부터 ${plans.find(p => p.id === planId)?.name} 요금제로 변경되도록 예약되었습니다.`);
+    setChanging(false);
+  }
+
+  async function handleSubmitPayment() {
+    if (!user) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+    if (!depositorName.trim()) {
+      alert("입금자명을 입력해주세요.");
+      return;
+    }
+
+    setChanging(true);
+    const selectedPlan = plans.find(p => p.id === selectedPlanId);
+    
+    // 1. 사용자 정보에 신청 기록 업데이트
+    const { error: userError } = await supabase
+      .from("b-messenger_users")
+      .update({
+        plan_request: selectedPlanId,
+        depositor_name: depositorName,
+        payment_status: "pending",
+        plan_request_at: new Date().toISOString()
+      })
+      .eq("id", user.id);
+
+    if (userError) {
+      alert("신청 중 오류가 발생했습니다: " + userError.message);
+      setChanging(false);
+      return;
+    }
+
+    // 2. 결제 로그(장부) 테이블에 새로운 신청 내역(pending) 인서트
+    const amountNum = typeof selectedPlan?.price === 'number' ? selectedPlan.price : 0;
+    const { error: logError } = await supabase
+      .from("b-messenger_payment_logs")
+      .insert({
+        user_id: user.id,
+        plan_name: selectedPlanId,
+        amount: amountNum,
+        depositor_name: depositorName,
+        status: "pending",
+        requested_at: new Date().toISOString()
+      });
+
+    if (logError) {
+      console.error("결제 로그 생성 실패:", logError);
+      // 로그 생성 실패가 메인 워크플로우를 중단하지 않도록 할 수도 있지만 여기선 에러 처리
+    }
+
+    alert("신청이 완료되었습니다. 관리자 확인 후 승인됩니다.");
+    setDepositorName("");
+    setShowModal(false);
     setChanging(false);
   }
 
@@ -268,6 +385,131 @@ export default function PricingPage() {
           </div>
         </div>
       </div>
+
+      {/* 무통장 입금 모달 (화이트 테마) */}
+      {showModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          backdropFilter: "blur(4px)"
+        }}>
+          <div style={{ background: "#ffffff", padding: "32px", width: "400px", maxWidth: "90%", borderRadius: "16px", boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "16px", color: "#1e293b" }}>📝 무통장 입금 신청</h2>
+            <div style={{ marginBottom: "20px", fontSize: "0.95rem", color: "#475569", lineHeight: 1.5 }}>
+              <p>아래 계좌로 해당 금액을 입금해주시면, 확인 후 즉시 플랜이 업그레이드 됩니다.</p>
+              <div style={{ background: "#f8fafc", padding: "16px", borderRadius: "12px", marginTop: "12px", border: "1px solid #e2e8f0", color: "#334155" }}>
+                <strong>은행</strong>: 국민은행<br/>
+                <strong>계좌번호</strong>: 123456-78-901234<br/>
+                <strong>예금주</strong>: (주)비메신저<br/>
+                <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px dashed #cbd5e1", color: "#2563eb", fontWeight: 700 }}>
+                  결제 금액: {plans.find(p => p.id === selectedPlanId)?.priceLabel}
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ marginBottom: "24px" }}>
+              <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem", color: "#475569", fontWeight: 600 }}>입금자명 (실제 입금하실 이름)</label>
+              <input 
+                type="text" 
+                value={depositorName} 
+                onChange={e => setDepositorName(e.target.value)}
+                placeholder="반드시 입금자명을 입력해주세요"
+                style={{
+                  width: "100%", padding: "12px", borderRadius: "8px",
+                  background: "#ffffff", border: "1px solid #cbd5e1",
+                  color: "#0f172a", outline: "none",
+                  boxShadow: "inset 0 1px 2px rgba(0,0,0,0.05)"
+                }}
+              />
+            </div>
+            
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button 
+                onClick={() => setShowModal(false)}
+                disabled={changing}
+                style={{ flex: 1, padding: "12px", background: "#f1f5f9", border: "1px solid #cbd5e1", color: "#475569", borderRadius: "8px", cursor: "pointer", fontWeight: 600 }}
+              >
+                취소
+              </button>
+              <button 
+                onClick={handleSubmitPayment}
+                disabled={changing}
+                style={{ flex: 1, padding: "12px", background: "linear-gradient(135deg, #3b82f6, #2563eb)", border: "none", color: "white", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 12px rgba(59,130,246,0.3)" }}
+              >
+                {changing ? "처리 중..." : "입금 완료 및 신청"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 프리미엄 다운그레이드 예약 모달 */}
+      {showDowngradeModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.6)", zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          backdropFilter: "blur(6px)"
+        }}>
+          <div style={{ background: "rgba(30, 41, 59, 0.95)", border: "1px solid rgba(255,255,255,0.1)", padding: "32px", width: "450px", maxWidth: "90%", borderRadius: "20px", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)" }}>
+            <h2 style={{ fontSize: "1.4rem", fontWeight: "800", marginBottom: "16px", color: "white", display: "flex", alignItems: "center", gap: "8px" }}>
+              <span>🗓️</span> 다운그레이드 예약 신청 
+            </h2>
+            <div style={{ marginBottom: "24px", fontSize: "0.95rem", color: "#94a3b8", lineHeight: 1.6 }}>
+              <p>현재 요금제의 남은 혜택을 100% 보장해 드리기 위해, 즉시 변경되지 않고 <strong style={{color:"#f8fafc"}}>다음 구독 결제일</strong>부터 새로운 요금제가 시작됩니다.</p>
+              
+              <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "20px", borderRadius: "14px", marginTop: "16px", border: "1px solid rgba(255,255,255,0.05)", color: "#e2e8f0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
+                  <span style={{ color: "#64748b" }}>현재 이용 중</span>
+                  <span style={{ fontWeight: 600 }}>{plans.find(p => p.id === currentPlan)?.name} ({plans.find(p => p.id === currentPlan)?.priceLabel})</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
+                  <span style={{ color: "#64748b" }}>변경 신청 플랜</span>
+                  <span style={{ fontWeight: 600, color: "#cbd5e1" }}>{plans.find(p => p.id === selectedDowngradePlanId)?.name} ({plans.find(p => p.id === selectedDowngradePlanId)?.priceLabel})</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed rgba(255,255,255,0.1)", paddingTop: "10px", marginTop: "4px" }}>
+                  <span style={{ color: "#64748b" }}>요금제 변경 예정일</span>
+                  <span style={{ fontWeight: 700, color: "#38bdf8" }}>
+                    {subscriptionEndDate 
+                      ? new Date(subscriptionEndDate).toLocaleDateString()
+                      : "다음 정기 결제일"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ background: "rgba(239, 68, 68, 0.1)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(239, 68, 68, 0.2)", marginBottom: "24px" }}>
+              <h3 style={{ fontSize: "0.9rem", color: "#fca5a5", fontWeight: 700, marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span>⚠️</span> 다운그레이드 유의사항
+              </h3>
+              <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "0.85rem", color: "#f87171", lineHeight: 1.5 }}>
+                <li>변경 예정일 전까지는 기존의 높은 혜택이 그대로 유지됩니다.</li>
+                <li>변경 시점에 초과 생성된 주소록 명단은 가장 아래부터 순차 접근이 임시 제한될 수 있습니다.</li>
+              </ul>
+            </div>
+            
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button 
+                onClick={() => setShowDowngradeModal(false)}
+                disabled={changing}
+                style={{ flex: 1, padding: "14px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", borderRadius: "12px", cursor: "pointer", fontWeight: 600, transition: "all 0.2s" }}
+              >
+                취소
+              </button>
+              <button 
+                onClick={() => {
+                  handleDowngrade(selectedDowngradePlanId);
+                  setShowDowngradeModal(false);
+                }}
+                disabled={changing}
+                style={{ flex: 2, padding: "14px", background: "linear-gradient(135deg, #3b82f6, #6366f1)", border: "none", color: "white", borderRadius: "12px", cursor: "pointer", fontWeight: 700, boxShadow: "0 4px 15px rgba(59, 130, 246, 0.4)", transition: "all 0.2s" }}
+              >
+                {changing ? "예약 중..." : "예 확인했습니다 (예약)"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

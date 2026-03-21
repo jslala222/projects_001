@@ -17,6 +17,7 @@ interface AuthContextType {
   isAdmin: boolean;         // 관리자 여부
   userStatus: string;       // 승인 상태 (pending/approved/rejected)
   plan: string;             // 요금제 (free/pro/enterprise)
+  paymentStatus: string | null; // 현재 결제/예약 상태
   signUp: (email: string, password: string, name: string, phone: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -33,18 +34,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userStatus, setUserStatus] = useState("pending");
   const [plan, setPlan] = useState("free");
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
 
-  // 프로필 정보(role, status, plan) 가져오는 함수
+  // 프로필 정보(role, status, plan 등) 가져오는 함수 및 예약 다운그레이드 자동 확인
   async function fetchProfile(userId: string) {
     const { data: profile } = await supabase
       .from("b-messenger_users")
-      .select("role, status, plan")
+      .select("role, status, plan, payment_status, plan_request, subscription_end_date")
       .eq("id", userId)
       .single();
+
     if (profile) {
+      // 다운그레이드 자동 갱신 로직 (만료일 스캔)
+      let activePlan = profile.plan || "free";
+
+      let remainingPaymentStatus = profile.payment_status;
+
+      if (
+        profile.payment_status === "downgrade_reserved" &&
+        profile.plan_request &&
+        profile.subscription_end_date
+      ) {
+        // 만료일이 지났는지 비교
+        const endDate = new Date(profile.subscription_end_date).getTime();
+        const now = new Date().getTime();
+        
+        if (now >= endDate) {
+          // 만료됨 -> 예약된 플랜으로 강제 업데이트
+          activePlan = profile.plan_request;
+          remainingPaymentStatus = null;
+          await supabase
+            .from("b-messenger_users")
+            .update({
+              plan: activePlan,
+              plan_request: null,
+              payment_status: null,
+              subscription_end_date: null
+            })
+            .eq("id", userId);
+        }
+      }
+
       setIsAdmin(profile.role === "admin");
       setUserStatus(profile.status || "pending");
-      setPlan(profile.plan || "free");
+      setPlan(activePlan);
+      // 다운그레이드 자동화 로직에서 처리되고 남은 상태 업데이트
+      setPaymentStatus(remainingPaymentStatus);
       return profile;
     }
     return null;
@@ -140,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAdmin(false);
     setUserStatus("pending");
     setPlan("free");
+    setPaymentStatus(null);
   }
 
   async function refreshProfile() {
@@ -147,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, isAdmin, userStatus, plan, signUp, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, loading, isAdmin, userStatus, plan, paymentStatus, signUp, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

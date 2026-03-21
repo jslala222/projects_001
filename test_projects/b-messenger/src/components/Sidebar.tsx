@@ -27,6 +27,7 @@ const subMenus = [
 // 관리자 전용 메뉴
 const adminMenus = [
   { href: "/admin", icon: "🛡️", label: "회원 관리" },
+  { href: "/admin/subscriptions", icon: "💳", label: "구독 관리" },
 ];
 
 export default function Sidebar() {
