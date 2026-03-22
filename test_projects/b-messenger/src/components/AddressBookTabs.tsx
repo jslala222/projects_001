@@ -37,12 +37,15 @@ export default function AddressBookTabs({
   onDeleteCsvByBook,
 }: Props) {
   const isEnterprise = plan === "enterprise";
-  const MAX_BOOKS = 5;
+  const isPro = plan === "pro" || plan === "enterprise";
+  const MAX_BOOKS = isEnterprise ? 5 : isPro ? 2 : 0;
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [contextMenu, setContextMenu] = useState<{ bookId: string; x: number; y: number } | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "error" | "success" } | null>(null);
+  const [alertModal, setAlertModal] = useState<{ title: string; desc: string; upgrade?: boolean } | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ bookId: string; bookName: string; contactCount: number; step: 1 | 2; nameInput: string } | null>(null);
   const [addLoading, setAddLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -74,12 +77,20 @@ export default function AddressBookTabs({
 
   // + 버튼 클릭
   const handleAdd = async () => {
-    if (!isEnterprise) {
-      showToast("Enterprise 요금제에서만 주소록을 추가할 수 있습니다.", "error");
+    if (!isPro) {
+      setAlertModal({
+        title: "주소록 추가 불가",
+        desc: `다중 주소록 기능은 Pro 이상 요금제에서 사용 가능합니다.\n\n현재 플랜: FREE\n\n플랜 업그레이드 후 이용해 주세요.`,
+        upgrade: true,
+      });
       return;
     }
     if (books.length >= MAX_BOOKS) {
-      showToast(`주소록은 최대 ${MAX_BOOKS}개까지만 추가할 수 있습니다.`, "error");
+      setAlertModal({
+        title: "주소록 한도 도달",
+        desc: `현재 플랜(${isEnterprise ? "Enterprise" : "Pro"})에서는 주소록을 최대 ${MAX_BOOKS}개까지 사용할 수 있습니다.\n\n현재 등록: ${books.length}개 / 한도: ${MAX_BOOKS}개${!isEnterprise ? "\n\nEnterprise로 업그레이드 시 최덅5개까지 사용 가능합니다." : ""}`,
+        upgrade: !isEnterprise,
+      });
       return;
     }
     setAddLoading(true);
@@ -96,7 +107,7 @@ export default function AddressBookTabs({
 
   // 탭 더블클릭 → 이름 편집
   const handleDoubleClick = (book: AddressBook) => {
-    if (!isEnterprise) return;
+    if (!isPro) return;
     setEditingId(book.id);
     setEditingName(book.name);
   };
@@ -115,22 +126,30 @@ export default function AddressBookTabs({
 
   // 우클릭 컨텍스트 메뉴
   const handleContextMenu = (e: React.MouseEvent, bookId: string) => {
-    if (!isEnterprise) return;
+    if (!isPro) return;
     e.preventDefault();
     setContextMenu({ bookId, x: e.clientX, y: e.clientY });
   };
 
-  // 주소록 삭제
-  const handleDelete = async (bookId: string) => {
+  // 주소록 삭제 — 1단계 먥보 열기
+  const handleDeleteRequest = (bookId: string) => {
     setContextMenu(null);
-    if (!confirm("주소록을 삭제하면 소속 연락처는 '전체'로 이동됩니다. 삭제할까요?")) return;
-    const res = await dataStore.deleteAddressBook(bookId);
+    const book = books.find((b) => b.id === bookId);
+    if (!book) return;
+    setDeleteModal({ bookId, bookName: book.name, contactCount: book.contactCount, step: 1, nameInput: "" });
+  };
+
+  // 주소록 삭제 — 2단계 확인 후 실행
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal) return;
+    const res = await dataStore.deleteAddressBook(deleteModal.bookId);
+    setDeleteModal(null);
     if (!res.success) {
       showToast(res.error ?? "삭제 실패", "error");
     } else {
       showToast("주소록이 삭제되었습니다.", "success");
       onBooksChange();
-      if (activeBookId === bookId) onTabChange(null);
+      if (activeBookId === deleteModal.bookId) onTabChange(null);
     }
   };
 
@@ -163,7 +182,7 @@ export default function AddressBookTabs({
             onClick={() => { if (editingId !== book.id) onTabChange(book.id); }}
             onDoubleClick={() => handleDoubleClick(book)}
             onContextMenu={(e) => handleContextMenu(e, book.id)}
-            title={isEnterprise ? "더블클릭: 이름 변경 | 우클릭: 삭제" : ""}
+            title={isPro ? "더블클릭: 이름 변경 | 우클릭: 삭제" : ""}
           >
             {editingId === book.id ? (
               <input
@@ -189,8 +208,8 @@ export default function AddressBookTabs({
           );
         })}
 
-        {/* Enterprise: + 추가 버튼 */}
-        {isEnterprise && (
+        {/* Pro 이상: + 추가 버튼 */}
+        {isPro && (
           <button
             className={`${styles.addBtn} ${books.length >= MAX_BOOKS ? styles.addBtnDisabled : ""}`}
             onClick={handleAdd}
@@ -201,10 +220,10 @@ export default function AddressBookTabs({
           </button>
         )}
 
-        {/* Free/Pro: 잠금 배지 */}
-        {!isEnterprise && (
-          <div className={styles.lockBadge} title="Enterprise 요금제에서 주소록을 최대 5개까지 추가할 수 있습니다.">
-            🔒 다중 주소록 <span>Enterprise</span>
+        {/* Free: 잠금 배지 */}
+        {!isPro && (
+          <div className={styles.lockBadge} title="Pro 이상 요금제에서 주소록을 추가할 수 있습니다.">
+            🔒 다중 주소록 <span>Pro+</span>
           </div>
         )}
       </div>
@@ -231,7 +250,7 @@ export default function AddressBookTabs({
           </button>
           <button
             className={styles.contextMenuDanger}
-            onClick={() => handleDelete(contextMenu.bookId)}
+            onClick={() => handleDeleteRequest(contextMenu.bookId)}
           >
             🗑️ 주소록 삭제
           </button>
@@ -254,6 +273,173 @@ export default function AddressBookTabs({
       {toast && (
         <div className={`${styles.toast} ${toast.type === "error" ? styles.toastError : styles.toastSuccess}`}>
           {toast.type === "error" ? "⚠️" : "✅"} {toast.msg}
+        </div>
+      )}
+
+      {/* 주소록 제한 알림 팝업 모달 */}
+      {alertModal && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.6)",
+        }} onClick={() => setAlertModal(null)}>
+          <div style={{
+            background: "#1e1e2e",
+            border: "1px solid #7c3aed",
+            borderRadius: 16,
+            padding: "32px 28px",
+            maxWidth: 400,
+            width: "90%",
+            textAlign: "center",
+            boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>📚</div>
+            <h3 style={{ fontSize: 17, fontWeight: 700, color: "#a78bfa", marginBottom: 16 }}>
+              {alertModal.title}
+            </h3>
+            <p style={{
+              fontSize: 14, color: "#e2e8f0", lineHeight: 1.8,
+              whiteSpace: "pre-line", marginBottom: 24,
+            }}>
+              {alertModal.desc}
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button
+                onClick={() => setAlertModal(null)}
+                style={{
+                  padding: "9px 22px", borderRadius: 8,
+                  background: "#374151", color: "#fff",
+                  border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14,
+                }}
+              >
+                닫기
+              </button>
+              {alertModal.upgrade && (
+                <a
+                  href="/pricing"
+                  style={{
+                    padding: "9px 22px", borderRadius: 8,
+                    background: "#7c3aed", color: "#fff",
+                    border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14,
+                    textDecoration: "none", display: "inline-block",
+                  }}
+                >
+                  플랜 업그레이드 →
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 주소록 삭제 2단계 확인 모달 */}
+      {deleteModal && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.7)",
+        }}>
+          <div style={{
+            background: "#1e1e2e",
+            border: "1px solid #ef4444",
+            borderRadius: 16,
+            padding: "32px 28px",
+            maxWidth: 420,
+            width: "90%",
+            boxShadow: "0 8px 40px rgba(0,0,0,0.7)",
+          }} onClick={(e) => e.stopPropagation()}>
+            {deleteModal.step === 1 ? (
+              <>
+                <div style={{ fontSize: 40, marginBottom: 12, textAlign: "center" }}>🗑️</div>
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: "#ef4444", marginBottom: 16, textAlign: "center" }}>
+                  주소록 삭제
+                </h3>
+                <p style={{ fontSize: 14, color: "#e2e8f0", lineHeight: 1.8, marginBottom: 8 }}>
+                  주소록 <strong style={{ color: "#fde68a" }}>"{deleteModal.bookName}"</strong>을 삭제합니다.
+                </p>
+                <p style={{ fontSize: 13, color: "#f87171", lineHeight: 1.7, marginBottom: 24 }}>
+                  ⚠️ 포함된 연락처 <strong>{deleteModal.contactCount}명</strong>은 '전체' 목록으로 이동되며,
+                  이 작업은 되돌릴 수 없습니다.
+                </p>
+                <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                  <button
+                    onClick={() => setDeleteModal(null)}
+                    style={{
+                      padding: "9px 22px", borderRadius: 8,
+                      background: "#374151", color: "#fff",
+                      border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14,
+                    }}
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={() => setDeleteModal({ ...deleteModal, step: 2 })}
+                    style={{
+                      padding: "9px 22px", borderRadius: 8,
+                      background: "#7f1d1d", color: "#fca5a5",
+                      border: "1px solid #ef4444", cursor: "pointer", fontWeight: 600, fontSize: 14,
+                    }}
+                  >
+                    다음 →
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 40, marginBottom: 12, textAlign: "center" }}>✍️</div>
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: "#ef4444", marginBottom: 16, textAlign: "center" }}>
+                  삭제 확인
+                </h3>
+                <p style={{ fontSize: 14, color: "#e2e8f0", lineHeight: 1.8, marginBottom: 12 }}>
+                  계속하려면 주소록 이름을 정확히 입력해 주세요:
+                </p>
+                <p style={{ fontSize: 13, color: "#fde68a", marginBottom: 10, fontWeight: 600 }}>
+                  {deleteModal.bookName}
+                </p>
+                <input
+                  type="text"
+                  value={deleteModal.nameInput}
+                  onChange={(e) => setDeleteModal({ ...deleteModal, nameInput: e.target.value })}
+                  placeholder={deleteModal.bookName}
+                  style={{
+                    width: "100%", padding: "10px 12px",
+                    background: "#0f172a", border: "1px solid #ef4444",
+                    borderRadius: 8, color: "#fff", fontSize: 14, marginBottom: 20,
+                    boxSizing: "border-box",
+                  }}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && deleteModal.nameInput === deleteModal.bookName) handleDeleteConfirm();
+                  }}
+                />
+                <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                  <button
+                    onClick={() => setDeleteModal(null)}
+                    style={{
+                      padding: "9px 22px", borderRadius: 8,
+                      background: "#374151", color: "#fff",
+                      border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14,
+                    }}
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleDeleteConfirm}
+                    disabled={deleteModal.nameInput !== deleteModal.bookName}
+                    style={{
+                      padding: "9px 22px", borderRadius: 8,
+                      background: deleteModal.nameInput === deleteModal.bookName ? "#dc2626" : "#374151",
+                      color: deleteModal.nameInput === deleteModal.bookName ? "#fff" : "#6b7280",
+                      border: "none", cursor: deleteModal.nameInput === deleteModal.bookName ? "pointer" : "not-allowed",
+                      fontWeight: 700, fontSize: 14, transition: "all 0.2s",
+                    }}
+                  >
+                    영구 삭제
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -7,12 +7,11 @@
 import { useState, useEffect, useCallback, Fragment } from "react";
 import { dataStore, Contact, AddressBook } from "@/lib/store";
 import { useAuth } from "@/components/AuthContext";
+import { usePlan } from "@/hooks/usePlan";
 import AddressBookTabs from "@/components/AddressBookTabs";
 import ContactAddModal from "@/components/ContactAddModal";
 import CSVUploadModal from "@/components/CSVUploadModal";
 import styles from "@/styles/contacts.module.css";
-import { getGroups } from "@/app/actions/groups";
-import type { Group } from "@/types";
 
 const PAGE_SIZE = 20;
 
@@ -33,6 +32,7 @@ const SORT_OPTIONS: SortOption[] = [
 
 export default function ContactsPage() {
   const { plan, loading: authLoading } = useAuth();
+  const { limits } = usePlan();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [addressBooks, setAddressBooks] = useState<AddressBook[]>([]);
   const [totalContactCount, setTotalContactCount] = useState(0);
@@ -45,12 +45,7 @@ export default function ContactsPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [editContact, setEditContact] = useState<Contact | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // 그룹/태그 필터 (Pro 이상)
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [filterGroupId, setFilterGroupId] = useState<string | null>(null);
-  const [filterTag, setFilterTag] = useState<string | null>(null);
-  const [allTags, setAllTags] = useState<string[]>([]);
+  const [newContactId, setNewContactId] = useState<string | null>(null);
 
   // 2단계 경고: step1=경고확인, step2=텍스트입력확인
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -62,31 +57,19 @@ export default function ContactsPage() {
     inputText: string;
   } | null>(null);
 
-  const isPro = plan === "pro" || plan === "enterprise";
-
-  // 그룹 목록 + 태그 목록 로드 (Pro 이상만)
-  useEffect(() => {
-    if (!authLoading && isPro) {
-      getGroups().then(({ data }) => setGroups(data ?? []));
-      dataStore.getAllTags().then(setAllTags);
-    }
-  }, [authLoading, isPro]);
+  const isPro = plan === "pro" || plan === "enterprise"; // AddressBookTabs plan prop 전달용
 
   // 서버사이드 데이터 로드
   const loadData = useCallback(async (
     page: number,
     bookId: string | null,
     searchText: string,
-    si: number,
-    groupId: string | null,
-    tag: string | null
+    si: number
   ) => {
     const { sortBy, sortDir } = SORT_OPTIONS[si];
     const [result, books, totalAll] = await Promise.all([
       dataStore.getContactsPaged(
-        page, PAGE_SIZE, false, bookId, searchText, sortBy, sortDir,
-        groupId ?? undefined,
-        tag ? [tag] : undefined
+        page, PAGE_SIZE, false, bookId, searchText, sortBy, sortDir
       ),
       dataStore.getAddressBooks(),
       dataStore.getContactsCount(),
@@ -100,12 +83,12 @@ export default function ContactsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    loadData(currentPage, activeBookId, search, sortIdx, filterGroupId, filterTag);
-  }, [currentPage, activeBookId, search, sortIdx, filterGroupId, filterTag, loadData, authLoading]);
+    loadData(currentPage, activeBookId, search, sortIdx);
+  }, [currentPage, activeBookId, search, sortIdx, loadData, authLoading]);
 
   const refresh = useCallback(() => {
-    loadData(currentPage, activeBookId, search, sortIdx, filterGroupId, filterTag);
-  }, [loadData, currentPage, activeBookId, search, sortIdx, filterGroupId, filterTag]);
+    loadData(currentPage, activeBookId, search, sortIdx);
+  }, [loadData, currentPage, activeBookId, search, sortIdx]);
 
   // 탭 전환 시 페이지 초기화
   const handleTabChange = useCallback((bookId: string | null) => {
@@ -120,23 +103,6 @@ export default function ContactsPage() {
 
   function handleSortChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setSortIdx(Number(e.target.value));
-    setCurrentPage(0);
-  }
-
-  function handleGroupFilter(groupId: string | null) {
-    setFilterGroupId(groupId);
-    setCurrentPage(0);
-  }
-
-  function handleTagFilter(tag: string | null) {
-    setFilterTag(tag);
-    setCurrentPage(0);
-  }
-
-  function clearAllFilters() {
-    setFilterGroupId(null);
-    setFilterTag(null);
-    setSearch("");
     setCurrentPage(0);
   }
 
@@ -160,11 +126,6 @@ export default function ContactsPage() {
       await dataStore.deleteContact(id);
       refresh();
     }
-  }
-
-  async function handleToggleCustomer(contact: Contact) {
-    const success = await dataStore.toggleCustomerStatus(contact.id, !contact.isCustomer);
-    if (success) refresh();
   }
 
   // CSV 일괄삭제 요청
@@ -223,91 +184,6 @@ export default function ContactsPage() {
         onDeleteCsvByBook={(bookId) => openDeleteConfirm("book", bookId)}
       />
 
-      {/* 그룹/태그 필터 패널 (Pro 이상) */}
-      {isPro && (groups.length > 0 || allTags.length > 0) && (
-        <div style={{
-          display: "flex",
-          gap: 8,
-          flexWrap: "wrap",
-          alignItems: "center",
-          padding: "10px 0",
-          marginBottom: 8,
-        }}>
-          <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>필터:</span>
-
-          {/* 그룹 필터 */}
-          {groups.length > 0 && (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <button
-                onClick={() => handleGroupFilter(null)}
-                style={{
-                  fontSize: 12, padding: "4px 10px", borderRadius: 20,
-                  border: "1px solid var(--border-light)",
-                  background: !filterGroupId ? "var(--accent)" : "transparent",
-                  color: !filterGroupId ? "#fff" : "var(--text-secondary)",
-                  cursor: "pointer",
-                }}
-              >전체</button>
-              {groups.map(g => (
-                <button
-                  key={g.id}
-                  onClick={() => handleGroupFilter(filterGroupId === g.id ? null : g.id)}
-                  style={{
-                    fontSize: 12, padding: "4px 10px", borderRadius: 20,
-                    border: `1px solid ${g.color}40`,
-                    background: filterGroupId === g.id ? g.color : `${g.color}18`,
-                    color: filterGroupId === g.id ? "#fff" : g.color,
-                    cursor: "pointer",
-                    fontWeight: filterGroupId === g.id ? 600 : 400,
-                  }}
-                >
-                  {g.name} ({g.member_count ?? 0})
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* 태그 필터 */}
-          {allTags.length > 0 && (
-            <>
-              <span style={{ fontSize: 11, color: "var(--text-secondary)", margin: "0 4px" }}>|</span>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {allTags.slice(0, 10).map(tag => (
-                  <button
-                    key={tag}
-                    onClick={() => handleTagFilter(filterTag === tag ? null : tag)}
-                    style={{
-                      fontSize: 12, padding: "4px 10px", borderRadius: 20,
-                      border: "1px solid var(--border-light)",
-                      background: filterTag === tag ? "#6366f1" : "transparent",
-                      color: filterTag === tag ? "#fff" : "var(--text-secondary)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    #{tag}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* 필터 초기화 */}
-          {(filterGroupId || filterTag || search) && (
-            <button
-              onClick={clearAllFilters}
-              style={{
-                fontSize: 12, padding: "4px 10px", borderRadius: 20,
-                border: "1px solid #f87171",
-                color: "#f87171", background: "transparent",
-                cursor: "pointer", marginLeft: 4,
-              }}
-            >
-              × 초기화
-            </button>
-          )}
-        </div>
-      )}
-
       {/* 검색 + 정렬 */}
       <div className={styles.toolbar}>
         <div className={styles.searchBox}>
@@ -349,7 +225,6 @@ export default function ContactsPage() {
         <table className={styles.contactTable}>
           <thead>
             <tr>
-              <th style={{ width: 40, textAlign: "center" }}>고객</th>
               <th>이름</th>
               <th>전화번호</th>
               <th>이메일</th>
@@ -363,26 +238,27 @@ export default function ContactsPage() {
           <tbody>
             {contacts.map((contact) => {
               const isExpanded = expandedId === contact.id;
+              const isNew = newContactId === contact.id;
               return (
                 <Fragment key={contact.id}>
                   <tr
-                    className={`${contact.isCustomer ? styles.rowCustomer : ""} ${styles.rowClickable} ${isExpanded ? styles.rowExpanded : ""}`}
+                    className={`${styles.rowClickable} ${isExpanded ? styles.rowExpanded : ""} ${isNew ? styles.rowNew : ""}`}
                     onClick={() => toggleExpand(contact)}
                   >
-                    <td style={{ textAlign: "center" }}>
-                      <button
-                        className={styles.starBtn}
-                        onClick={(e) => { e.stopPropagation(); handleToggleCustomer(contact); }}
-                        title={contact.isCustomer ? "고객 해제" : "고객으로 등록"}
-                      >
-                        {contact.isCustomer ? "⭐" : "☆"}
-                      </button>
+                    <td>
+                      <span className={styles.contactName}>{contact.name}</span>
+                      {isNew && <span className={styles.newBadge}>🆕 NEW</span>}
                     </td>
-                    <td><span className={styles.contactName}>{contact.name}</span></td>
                     <td><span className={styles.contactPhone}>{contact.phone}</span></td>
                     <td><span className={styles.cellSecondary}>{contact.email || "—"}</span></td>
                     <td><span className={styles.cellSecondary}>{contact.gender === "male" ? "남성" : contact.gender === "female" ? "여성" : "—"}</span></td>
-                    <td><span className={styles.cellSecondary}>{contact.joinDate || "—"}</span></td>
+                    <td>
+                      <span
+                        className={styles.cellSecondary}
+                        title={`등록일: ${contact.createdAt ? contact.createdAt.slice(0, 10) : "—"}`}
+                        style={{ cursor: "help" }}
+                      >{contact.joinDate || "—"}</span>
+                    </td>
                     <td>
                       <span className={`${styles.kakaoIcon} ${contact.isKakaoFriend ? styles.kakaoYes : styles.kakaoNo}`}>
                         {contact.isKakaoFriend ? "💬 친구" : "— 비친구"}
@@ -400,14 +276,13 @@ export default function ContactsPage() {
                   {/* 아코디언 상세 카드 */}
                   {isExpanded && (
                     <tr className={styles.expandRow}>
-                      <td colSpan={9} className={styles.expandCell}>
+                      <td colSpan={8} className={styles.expandCell}>
                         <div className={styles.inlineCard}>
                           {/* 좌측: 아바타 + 이름 + 배지 */}
                           <div className={styles.inlineCardLeft}>
                             <div className={styles.inlineAvatar}>{contact.name.charAt(0)}</div>
                             <div className={styles.inlineCardName}>{contact.name}</div>
                             <div className={styles.inlineBadges}>
-                              {contact.isCustomer && <span className={styles.inlineBadge} style={{ background: "rgba(102,126,234,0.15)", color: "#818cf8" }}>⭐ 고객</span>}
                               {contact.isKakaoFriend && <span className={styles.inlineBadge} style={{ background: "rgba(254,200,0,0.15)", color: "#ca8a04" }}>💬 카카오</span>}
                               {contact.marketingAgree && <span className={styles.inlineBadge} style={{ background: "rgba(34,197,94,0.15)", color: "#16a34a" }}>📣 마케팅</span>}
                             </div>
@@ -497,7 +372,7 @@ export default function ContactsPage() {
             })}
             {contacts.length === 0 && (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={8}>
                   <div className="empty-state">
                     <div className="empty-state-icon">📭</div>
                     <div className="empty-state-title">연락처가 없습니다</div>
@@ -549,13 +424,31 @@ export default function ContactsPage() {
               ? (addressBooks.find((b) => b.id === activeBookId)?.name || "주소록")
               : "전체"
           }
+          addressBooks={addressBooks}
           contactToEdit={editContact}
           onClose={() => setShowAddModal(false)}
-          onSaved={async () => {
+          onSaved={async (id) => {
             setShowAddModal(false);
+            if (id && !editContact) {
+              setSortIdx(2);
+              setCurrentPage(0);
+            }
             await refresh();
+            if (id && !editContact) {
+              setNewContactId(id);
+              setTimeout(() => setNewContactId(null), 5000);
+            }
           }}
-          onAdd={(data) => dataStore.addContact(data)}
+          onAdd={async (data) => {
+            if (limits.maxContacts !== Infinity) {
+              const currentCount = await dataStore.getContactsCount();
+              if (currentCount >= limits.maxContacts) {
+                alert(`현재 플랜은 최대 ${limits.maxContacts}명까지 등록 가능합니다.\n업그레이드 후 이용해 주세요.`);
+                return null;
+              }
+            }
+            return dataStore.addContact(data);
+          }}
           onEdit={(id, data) => dataStore.updateContact(id, data)}
         />
       )}

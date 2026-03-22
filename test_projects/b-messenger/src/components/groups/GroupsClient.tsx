@@ -21,9 +21,45 @@ import GroupSendModal from "@/components/groups/GroupSendModal";
 import styles from "@/styles/groups.module.css";
 
 const GROUP_COLORS = [
-  "#ef4444", "#f97316", "#eab308", "#22c55e",
-  "#14b8a6", "#3b82f6", "#8b5cf6", "#ec4899",
+  "#ffffff", "#ef4444", "#f97316", "#eab308", "#22c55e",
+  "#10b981", "#14b8a6", "#3b82f6", "#6366f1",
+  "#8b5cf6", "#ec4899", "#64748b", "#0f172a",
 ];
+
+const GROUP_GRADIENTS = [
+  "linear-gradient(135deg, #667eea, #764ba2)",
+  "linear-gradient(135deg, #f093fb, #f5576c)",
+  "linear-gradient(135deg, #4facfe, #00f2fe)",
+  "linear-gradient(135deg, #43e97b, #38f9d7)",
+  "linear-gradient(135deg, #fa709a, #fee140)",
+  "linear-gradient(135deg, #a18cd1, #fbc2eb)",
+  "linear-gradient(135deg, #fda085, #f6d365)",
+  "linear-gradient(135deg, #30cfd0, #330867)",
+  "linear-gradient(135deg, #c471f5, #fa71cd)",
+  "linear-gradient(135deg, #11998e, #38ef7d)",
+  "linear-gradient(135deg, #f7971e, #ffd200)",
+  "linear-gradient(135deg, #0f2027, #2c5364)",
+];
+
+function isGradient(c: string) { return c.startsWith("linear-gradient"); }
+function extractFirstColor(c: string) {
+  if (!isGradient(c)) return c;
+  const m = c.match(/#[0-9a-f]{3,6}/i);
+  return m ? m[0] : "#6366f1";
+}
+function getBgTint(c: string) {
+  if (!c || c === "#ffffff" || c === "#FFFFFF") return "#f8fafc";
+  if (isGradient(c)) {
+    // 흰색 55% 오버레이 + 그라데이션 → 파스텔 그라데이션 배경
+    return `linear-gradient(rgba(255,255,255,0.55), rgba(255,255,255,0.55)), ${c}`;
+  }
+  return `${c}44`; // ~27% 투명도 — 카드 전체 배경색이 확실하게 보임
+}
+function getBarColor(c: string) {
+  // 흰색 선택 시 좌측 바는 회색으로
+  if (!c || c === "#ffffff" || c === "#FFFFFF") return "#cbd5e1";
+  return c;
+}
 
 // flat 배열 → 트리 구조 변환
 function buildTree(groups: Group[]): Group[] {
@@ -162,6 +198,9 @@ function GroupFormModal({
   const [name, setName] = useState(group?.name ?? "");
   const [desc, setDesc] = useState(group?.description ?? "");
   const [color, setColor] = useState(group?.color ?? (parentGroup?.color ?? GROUP_COLORS[0]));
+  const [colorTab, setColorTab] = useState<"solid" | "gradient">(
+    isGradient(group?.color ?? "") ? "gradient" : "solid"
+  );
   const [pending, startTransition] = useTransition();
 
   const depthLabel = ["최상위", "대", "중", "소"][parentGroup ? (parentGroup.depth ?? 0) + 1 : 0] ?? "소";
@@ -225,19 +264,48 @@ function GroupFormModal({
               onChange={(e) => setDesc(e.target.value)}
             />
           </div>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>색상</label>
-            <div className={styles.colorPicker}>
-              {GROUP_COLORS.map((c) => (
+          {/* 배경색 팔레트: 최상위 그룹(depth 0)만 표시 */}
+          {!parentGroup && (!group || (group.depth ?? 0) === 0) && (
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>배경색</label>
+              <div className={styles.colorTabBar}>
                 <button
-                  key={c}
-                  onClick={() => setColor(c)}
-                  className={`${styles.colorSwatch} ${color === c ? styles.colorSwatchActive : ""}`}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
+                  type="button"
+                  className={`${styles.colorTabBtn} ${colorTab === "solid" ? styles.colorTabBtnActive : ""}`}
+                  onClick={() => setColorTab("solid")}
+                >단색</button>
+                <button
+                  type="button"
+                  className={`${styles.colorTabBtn} ${colorTab === "gradient" ? styles.colorTabBtnActive : ""}`}
+                  onClick={() => setColorTab("gradient")}
+                >그라데이션</button>
+              </div>
+              {colorTab === "solid" && (
+                <div className={styles.colorPicker}>
+                  {GROUP_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setColor(c)}
+                      className={`${styles.colorSwatch} ${color === c ? styles.colorSwatchActive : ""} ${c === "#ffffff" ? styles.colorSwatchWhite : ""}`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+              )}
+              {colorTab === "gradient" && (
+                <div className={styles.gradientPicker}>
+                  {GROUP_GRADIENTS.map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setColor(g)}
+                      className={`${styles.gradientSwatch} ${color === g ? styles.gradientSwatchActive : ""}`}
+                      style={{ background: g }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
 
         <div className={styles.modalFooter}>
@@ -612,96 +680,115 @@ function GroupTreeNode({
   const depthColor = DEPTH_COLORS[depth] ?? "#94a3b8";
 
   return (
-    <div className={depth === 0 ? styles.treeNodeWrapRoot : styles.treeNodeWrap}>
+    <div className={depth === 0 ? styles.treeNodeWrapRoot : `${styles.treeNodeWrap} ${depth === 1 ? styles.treeNodeDepth1 : depth === 2 ? styles.treeNodeDepth2 : styles.treeNodeDepth3}`}>
       {/* 행 */}
       <div
-        className={styles.treeRow}
+        className={`${styles.treeRow} ${depth === 0 ? styles.treeRowRoot : depth === 1 ? styles.treeRowDepth1 : depth === 2 ? styles.treeRowDepth2 : styles.treeRowDepth3}`}
         style={{
-          paddingLeft: `${12 + depth * 24}px`,
-          minHeight: depth === 0 ? "60px" : "48px",
+          paddingLeft: `${12 + depth * 12}px`,
+          minHeight: depth === 0 ? "80px" : depth === 1 ? "54px" : depth === 2 ? "44px" : "36px",
+          ...(depth > 0 ? { borderLeftColor: depthColor + "99" } : {}),
+          ...(depth === 0 ? ({
+            "--group-color-bar": getBarColor(node.color),
+            background: getBgTint(node.color),
+          } as React.CSSProperties) : {}),
         }}
       >
-        {/* 토글 버튼 */}
-        <button
-          className={styles.treeToggleBtn}
-          onClick={() => hasChildren && onToggle(node.id)}
-          style={{ visibility: hasChildren ? "visible" : "hidden" }}
-          title={isExpanded ? "접기" : "펼치기"}
-        >
-          {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-        </button>
+        {/* 메인 라인 */}
+        <div className={styles.treeRowMain}>
+          {/* 토글 버튼 */}
+          <button
+            className={styles.treeToggleBtn}
+            onClick={() => hasChildren && onToggle(node.id)}
+            style={{ visibility: hasChildren ? "visible" : "hidden" }}
+            title={isExpanded ? "접기" : "펼치기"}
+          >
+            {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+          </button>
 
-        {/* 색상 점 */}
-        <span
-          className={styles.treeColorDot}
-          style={{ backgroundColor: node.color }}
-        />
+          {/* 색상 점 */}
+          <span
+            className={styles.treeColorDot}
+            style={{ backgroundColor: node.color }}
+          />
 
-        {/* 깊이 배지 */}
-        <span
-          className={styles.treeDepthBadge}
-          style={{ backgroundColor: depthColor + "22", color: depthColor, borderColor: depthColor + "55" }}
-        >
-          {depthLabel}
-        </span>
+          {/* 깊이 배지 */}
+          <span
+            className={styles.treeDepthBadge}
+            style={{ backgroundColor: depthColor + "22", color: depthColor, borderColor: depthColor + "55" }}
+          >
+            {depthLabel}
+          </span>
 
-        {/* 이름 */}
-        <span className={styles.treeNodeName}>{node.name}</span>
+          {/* 이름 */}
+          <span className={styles.treeNodeName}>{node.name}</span>
 
-        {/* 설명 */}
-        {node.description && (
-          <span className={styles.treeNodeDesc}>{node.description}</span>
-        )}
-
-        {/* 멤버 수 */}
-        <span className={styles.treeMemberCount}>
-          {node.member_count ?? 0}명
-        </span>
-
-        {/* 액션 버튼들 */}
-        <div className={styles.treeActions}>
-          {depth < 3 && (
-            <button
-              className={`${styles.treeActionBtn} ${styles.treeActionAdd}`}
-              onClick={() => onAddChild(node)}
-              title="하위 그룹 추가"
-            >
-              <FolderPlus size={14} />
-              <span>하위</span>
-            </button>
+          {/* 설명 (depth > 0만 인라인 표시) */}
+          {depth > 0 && node.description && (
+            <span className={styles.treeNodeDesc}>{node.description}</span>
           )}
-          <button
-            className={`${styles.treeActionBtn} ${styles.treeActionMembers}`}
-            onClick={() => onMembers(node)}
-            title="멤버 관리"
-          >
-            <UserPlus size={14} />
-            <span>멤버</span>
-          </button>
-          <button
-            className={`${styles.treeActionBtn} ${styles.treeActionSend}`}
-            onClick={() => onSend(node)}
-            title="그룹 발송"
-          >
-            <Send size={14} />
-            <span>발송</span>
-          </button>
-          <button
-            className={`${styles.treeActionBtn} ${styles.treeActionEdit}`}
-            onClick={() => onEdit(node)}
-            title="수정"
-          >
-            <Pencil size={13} />
-          </button>
-          <button
-            className={`${styles.treeActionBtn} ${styles.treeActionDelete}`}
-            onClick={() => onDelete(node)}
-            disabled={deletingId === node.id}
-            title="삭제"
-          >
-            <Trash2 size={13} />
-          </button>
+
+          {/* 멤버 수 */}
+          <span className={styles.treeMemberCount}>
+            {node.member_count ?? 0}명
+          </span>
+
+          {/* 액션 버튼들 */}
+          <div className={styles.treeActions}>
+            {depth < 3 && (
+              <button
+                className={`${styles.treeActionBtn} ${styles.treeActionAdd}`}
+                onClick={() => onAddChild(node)}
+                title="하위 그룹 추가"
+              >
+                <FolderPlus size={14} />
+                <span>하위</span>
+              </button>
+            )}
+            <button
+              className={`${styles.treeActionBtn} ${styles.treeActionMembers}`}
+              onClick={() => onMembers(node)}
+              title="멤버 관리"
+            >
+              <UserPlus size={14} />
+              <span>멤버</span>
+            </button>
+            <button
+              className={`${styles.treeActionBtn} ${styles.treeActionSend}`}
+              onClick={() => onSend(node)}
+              title="그룹 발송"
+            >
+              <Send size={14} />
+              <span>발송</span>
+            </button>
+            <button
+              className={`${styles.treeActionBtn} ${styles.treeActionEdit}`}
+              onClick={() => onEdit(node)}
+              title="수정"
+            >
+              <Pencil size={13} />
+            </button>
+            <button
+              className={`${styles.treeActionBtn} ${styles.treeActionDelete}`}
+              onClick={() => onDelete(node)}
+              disabled={deletingId === node.id}
+              title="삭제"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
         </div>
+
+        {/* 서브 라인 (최상위 depth=0만) */}
+        {depth === 0 && (
+          <div className={styles.treeRowSub}>
+            {node.description ? (
+              <span className={styles.treeNodeDesc}>{node.description}</span>
+            ) : hasChildren ? (
+              <span className={styles.treeRowSubHint}>하위 그룹 {node.children!.length}개</span>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {/* 자식 노드 */}
@@ -749,6 +836,13 @@ export default function GroupsClient({
   const [deleteTarget, setDeleteTarget] = useState<Group | null>(null);
   // 그룹 발송 모달
   const [sendGroup, setSendGroup] = useState<Group | null>(null);
+  // 2단 패널 — 선택된 최상위 그룹 ID
+  const [selectedRootId, setSelectedRootId] = useState<string | null>(null);
+  // 첫 방문 배너
+  const [showBanner, setShowBanner] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return !localStorage.getItem("bm_groups_banner_dismissed");
+  });
 
   const [pending, startTransition] = useTransition();
 
@@ -818,6 +912,8 @@ export default function GroupsClient({
   };
 
   const treeRoots = buildTree(groups);
+  // selectedRootId가 없거나 삭제된 경우 첫 번째 루트로 폴백
+  const selectedRoot = treeRoots.find((r) => r.id === selectedRootId) ?? treeRoots[0] ?? null;
 
   return (
     <div className={styles.page}>
@@ -862,6 +958,27 @@ export default function GroupsClient({
         </div>
       </div>
 
+      {/* 첫 방문 배너 */}
+      {showBanner && (
+        <div className={styles.firstVisitBanner}>
+          <span className={styles.firstVisitIcon}>💡</span>
+          <div className={styles.firstVisitText}>
+            <strong>샘플 그룹 구조를 바로 가져올 수 있어요!</strong>
+            <span>10개 도메인의 4단계 분류 체계 템플릿을 제공합니다 —&nbsp;
+              <a href="/templates" className={styles.firstVisitLink}>템플릿 관리 → 그룹 템플릿</a>에서 확인하세요.
+            </span>
+          </div>
+          <button
+            className={styles.firstVisitClose}
+            onClick={() => {
+              setShowBanner(false);
+              localStorage.setItem("bm_groups_banner_dismissed", "1");
+            }}
+            aria-label="닫기"
+          >✕</button>
+        </div>
+      )}
+
       {/* 깊이 범례 */}
       <div className={styles.depthLegend}>
         {DEPTH_LABELS.map((label, i) => (
@@ -875,7 +992,7 @@ export default function GroupsClient({
         ))}
       </div>
 
-      {/* 그룹 트리 */}
+      {/* 그룹 트리 — 2단 패널 */}
       {groups.length === 0 ? (
         <div className={styles.empty}>
           <div className={styles.emptyIcon}>👥</div>
@@ -884,20 +1001,57 @@ export default function GroupsClient({
         </div>
       ) : (
         <div className={styles.treeContainer}>
-          {treeRoots.map((node) => (
-            <GroupTreeNode
-              key={node.id}
-              node={node}
-              expandedIds={expandedIds}
-              onToggle={handleToggle}
-              onEdit={openEdit}
-              onDelete={handleDelete}
-              onAddChild={openAddChild}
-              onMembers={setMembersGroup}
-              onSend={setSendGroup}
-              deletingId={deletingId}
-            />
-          ))}
+          {/* 좌측 패널: 최상위 그룹 선택 목록 */}
+          <div className={styles.panelLeft}>
+            <div className={styles.panelLeftTitle}>최상위 그룹 ({treeRoots.length})</div>
+            {treeRoots.map((root) => (
+              <button
+                key={root.id}
+                className={`${styles.panelItem} ${selectedRoot?.id === root.id ? styles.panelItemActive : ""}`}
+                onClick={() => setSelectedRootId(root.id)}
+              >
+                <span
+                  className={styles.panelItemDot}
+                  style={{ background: extractFirstColor(root.color) }}
+                />
+                <span className={styles.panelItemName}>{root.name}</span>
+                <span className={styles.panelItemCount}>
+                  {root.children?.length ?? 0}개
+                </span>
+              </button>
+            ))}
+            <button
+              className={styles.panelAddRootBtn}
+              onClick={openAddRoot}
+              disabled={!canAddMore}
+            >
+              <Plus size={13} />
+              최상위 추가
+            </button>
+          </div>
+
+          {/* 우측 패널: 선택된 최상위 그룹의 트리 */}
+          <div className={styles.panelRight}>
+            {selectedRoot ? (
+              <GroupTreeNode
+                key={selectedRoot.id}
+                node={selectedRoot}
+                expandedIds={expandedIds}
+                onToggle={handleToggle}
+                onEdit={openEdit}
+                onDelete={handleDelete}
+                onAddChild={openAddChild}
+                onMembers={setMembersGroup}
+                onSend={setSendGroup}
+                deletingId={deletingId}
+              />
+            ) : (
+              <div className={styles.panelRightEmpty}>
+                <div style={{ fontSize: 36, opacity: 0.3 }}>👈</div>
+                <p className={styles.panelRightEmptyText}>좌측에서 그룹을 선택하세요</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

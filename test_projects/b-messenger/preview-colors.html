@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>연락처 모달 — 왼쪽 폼 배경 색상 선택</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f1f5f9;
+    padding: 32px 20px;
+  }
+  h1 { text-align: center; font-size: 20px; color: #0f172a; margin-bottom: 6px; font-weight: 700; }
+  .subtitle { text-align: center; color: #64748b; font-size: 13px; margin-bottom: 32px; }
+  .grid { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+
+  .modal-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; }
+  .modal-wrap:hover .modal-box { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,0.18); }
+  .badge { font-size: 12px; font-weight: 700; padding: 4px 14px; border-radius: 20px; color: #fff; }
+  .modal-box {
+    width: 340px; border-radius: 16px; overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12); background: #fff;
+    transition: all 0.2s; border: 2px solid transparent;
+  }
+  .modal-box:hover { border-color: #6366f1; }
+
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px 12px; border-bottom: 1px solid #f1f5f9; background: #fff;
+  }
+  .modal-header h2 { font-size: 13px; font-weight: 700; color: #0f172a; }
+  .modal-header .x {
+    width: 24px; height: 24px; border-radius: 6px;
+    border: 1.5px solid #64748b; background: #f8fafc;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #64748b;
+  }
+
+  .modal-body { display: flex; height: 252px; }
+
+  /* 왼쪽 폼 */
+  .form-col {
+    flex: 1; padding: 14px 16px;
+    border-right: 1px solid #e2e8f0;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .field-label { font-size: 9px; font-weight: 600; color: #475569; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .field-input { height: 26px; border-radius: 7px; border: 1.5px solid #64748b; background: #fff; width: 100%; }
+  .field-row { display: flex; gap: 8px; }
+  .field-row .field-group { flex: 1; }
+  .tag-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tag { border-radius: 20px; border: 1.5px solid #64748b; padding: 2px 9px; font-size: 9px; color: #64748b; background: #fff; }
+  .tag.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+
+  /* 오른쪽 미리보기 — 에메랄드 민트 고정 */
+  .preview-col {
+    width: 110px; flex-shrink: 0; padding: 12px 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px; overflow: hidden;
+    background: linear-gradient(160deg, #ecfdf5 0%, #d1fae5 60%, #a7f3d0 100%);
+  }
+  .preview-label-text { font-size: 8px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 1px; }
+  .preview-card {
+    background: #fff; border-radius: 10px; padding: 10px 8px; width: 100%;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #a78bfa);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff;
+  }
+  .pname { font-size: 9px; font-weight: 700; color: #0f172a; }
+  .pfield { display: flex; align-items: center; gap: 3px; font-size: 8px; color: #475569; width: 100%; }
+  .ptag { background: #d1fae5; color: #065f46; border-radius: 20px; padding: 1px 5px; font-size: 7px; font-weight: 600; }
+
+  .modal-footer { padding: 10px 16px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; background: #fff; }
+  .btn-cancel { border: 1.5px solid #64748b; border-radius: 8px; padding: 5px 12px; font-size: 11px; background: #fff; color: #64748b; }
+  .btn-save { border: none; border-radius: 8px; padding: 5px 14px; font-size: 11px; font-weight: 700; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; }
+
+  .name-label { font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 4px; }
+  .color-desc { font-size: 11px; color: #64748b; text-align: center; }
+
+  /* 폼 배경 5가지 */
+  .form-bg1 { background: #ffffff; }           /* 순백 */
+  .form-bg2 { background: #f8faff; }           /* 쿨 화이트 */
+  .form-bg3 { background: #fafaf9; }           /* 웜 오프화이트 */
+  .form-bg4 { background: linear-gradient(180deg, #f8faff 0%, #f0f4ff 100%); } /* 연보라 그라데 */
+  .form-bg5 { background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%); } /* 연그린 그라데 (미리보기 통일) */
+
+  .badge1 { background: #334155; }
+  .badge2 { background: #3b82f6; }
+  .badge3 { background: #d97706; }
+  .badge4 { background: #6366f1; }
+  .badge5 { background: #16a34a; }
+</style>
+</head>
+<body>
+
+<h1>왼쪽 입력 폼 배경 색상 선택</h1>
+<p class="subtitle">오른쪽 미리보기는 에메랄드 민트로 고정 · 왼쪽 폼 배경만 다름 👇</p>
+
+<div class="grid">
+
+  <!-- ① 순백 -->
+  <div class="modal-wrap">
+    <div class="modal-box">
+      <div class="modal-header"><h2>➕ 새 연락처 추가</h2><div class="x">✕</div></div>
+      <div class="modal-body">
+        <div class="form-col form-bg1">
+          <div class="field-row">
+            <div class="field-group"><div class="field-label">이름 *</div><div class="field-input" style="background:#fff;"></div></div>
+            <div class="field-group"><div class="field-label">전화번호 *</div><div class="field-input" style="background:#fff;"></div></div>
+          </div>
+          <div><div class="field-label">이메일</div><div class="field-input" style="background:#fff;"></div></div>
+          <div><div class="field-label">관심사</div>
+            <div class="tag-row"><div class="tag active">건강</div><div class="tag active">여행</div><div class="tag">음식</div><div class="tag">패션</div></div>
+          </div>
+          <div><div class="field-label">메모</div><div class="field-input" style="height:32px;background:#fff;"></div></div>
+        </div>
+        <div class="preview-col">
+          <div class="preview-label-text">미리보기</div>
+          <div class="preview-card"><div class="avatar">홍</div><div class="pname">홍길동</div><div class="pfield">📱 010-1234-5678</div><div class="pfield">👤 남성</div><div class="pfield"><span class="ptag">건강</span><span class="ptag">여행</span></div></div>
+        </div>
+      </div>
+      <div class="modal-footer"><div class="btn-cancel">취소</div><div class="btn-save">추가하기</div></div>
+    </div>
+    <div class="badge badge1">① 순백 #ffffff</div>
+    <div class="color-desc">깔끔한 클래식 화이트</div>
+  </div>
+
+  <!-- ② 쿨 화이트 -->
+  <div class="modal-wrap">
+    <div class="modal-box">
+      <div class="modal-header"><h2>➕ 새 연락처 추가</h2><div class="x">✕</div></div>
+      <div class="modal-body">
+        <div class="form-col form-bg2">
+          <div class="field-row">
+            <div class="field-group"><div class="field-label">이름 *</div><div class="field-input" style="background:#fff;"></div></div>
+            <div class="field-group"><div class="field-label">전화번호 *</div><div class="field-input" style="background:#fff;"></div></div>
+          </div>
+          <div><div class="field-label">이메일</div><div class="field-input" style="background:#fff;"></div></div>
+          <div><div class="field-label">관심사</div>
+            <div class="tag-row"><div class="tag active">건강</div><div class="tag active">여행</div><div class="tag">음식</div><div class="tag">패션</div></div>
+          </div>
+          <div><div class="field-label">메모</div><div class="field-input" style="height:32px;background:#fff;"></div></div>
+        </div>
+        <div class="preview-col">
+          <div class="preview-label-text">미리보기</div>
+          <div class="preview-card"><div class="avatar">홍</div><div class="pname">홍길동</div><div class="pfield">📱 010-1234-5678</div><div class="pfield">👤 남성</div><div class="pfield"><span class="ptag">건강</span><span class="ptag">여행</span></div></div>
+        </div>
+      </div>
+      <div class="modal-footer"><div class="btn-cancel">취소</div><div class="btn-save">추가하기</div></div>
+    </div>
+    <div class="badge badge2">② 쿨 화이트 #f8faff</div>
+    <div class="color-desc">살짝 파란빛 도는 화이트</div>
+  </div>
+
+  <!-- ③ 웜 오프화이트 -->
+  <div class="modal-wrap">
+    <div class="modal-box">
+      <div class="modal-header"><h2>➕ 새 연락처 추가</h2><div class="x">✕</div></div>
+      <div class="modal-body">
+        <div class="form-col form-bg3">
+          <div class="field-row">
+            <div class="field-group"><div class="field-label">이름 *</div><div class="field-input" style="background:#fff;"></div></div>
+            <div class="field-group"><div class="field-label">전화번호 *</div><div class="field-input" style="background:#fff;"></div></div>
+          </div>
+          <div><div class="field-label">이메일</div><div class="field-input" style="background:#fff;"></div></div>
+          <div><div class="field-label">관심사</div>
+            <div class="tag-row"><div class="tag active">건강</div><div class="tag active">여행</div><div class="tag">음식</div><div class="tag">패션</div></div>
+          </div>
+          <div><div class="field-label">메모</div><div class="field-input" style="height:32px;background:#fff;"></div></div>
+        </div>
+        <div class="preview-col">
+          <div class="preview-label-text">미리보기</div>
+          <div class="preview-card"><div class="avatar">홍</div><div class="pname">홍길동</div><div class="pfield">📱 010-1234-5678</div><div class="pfield">👤 남성</div><div class="pfield"><span class="ptag">건강</span><span class="ptag">여행</span></div></div>
+        </div>
+      </div>
+      <div class="modal-footer"><div class="btn-cancel">취소</div><div class="btn-save">추가하기</div></div>
+    </div>
+    <div class="badge badge3">③ 웜 오프화이트 #fafaf9</div>
+    <div class="color-desc">따뜻하고 부드러운 아이보리빛</div>
+  </div>
+
+  <!-- ④ 연보라 그라데 -->
+  <div class="modal-wrap">
+    <div class="modal-box">
+      <div class="modal-header"><h2>➕ 새 연락처 추가</h2><div class="x">✕</div></div>
+      <div class="modal-body">
+        <div class="form-col form-bg4">
+          <div class="field-row">
+            <div class="field-group"><div class="field-label">이름 *</div><div class="field-input" style="background:#fff;"></div></div>
+            <div class="field-group"><div class="field-label">전화번호 *</div><div class="field-input" style="background:#fff;"></div></div>
+          </div>
+          <div><div class="field-label">이메일</div><div class="field-input" style="background:#fff;"></div></div>
+          <div><div class="field-label">관심사</div>
+            <div class="tag-row"><div class="tag active">건강</div><div class="tag active">여행</div><div class="tag">음식</div><div class="tag">패션</div></div>
+          </div>
+          <div><div class="field-label">메모</div><div class="field-input" style="height:32px;background:#fff;"></div></div>
+        </div>
+        <div class="preview-col">
+          <div class="preview-label-text">미리보기</div>
+          <div class="preview-card"><div class="avatar">홍</div><div class="pname">홍길동</div><div class="pfield">📱 010-1234-5678</div><div class="pfield">👤 남성</div><div class="pfield"><span class="ptag">건강</span><span class="ptag">여행</span></div></div>
+        </div>
+      </div>
+      <div class="modal-footer"><div class="btn-cancel">취소</div><div class="btn-save">추가하기</div></div>
+    </div>
+    <div class="badge badge4">④ 연보라 그라데</div>
+    <div class="color-desc">#f8faff → #f0f4ff (저장 버튼과 통일감)</div>
+  </div>
+
+  <!-- ⑤ 연그린 그라데 -->
+  <div class="modal-wrap">
+    <div class="modal-box">
+      <div class="modal-header"><h2>➕ 새 연락처 추가</h2><div class="x">✕</div></div>
+      <div class="modal-body">
+        <div class="form-col form-bg5">
+          <div class="field-row">
+            <div class="field-group"><div class="field-label">이름 *</div><div class="field-input" style="background:#fff;"></div></div>
+            <div class="field-group"><div class="field-label">전화번호 *</div><div class="field-input" style="background:#fff;"></div></div>
+          </div>
+          <div><div class="field-label">이메일</div><div class="field-input" style="background:#fff;"></div></div>
+          <div><div class="field-label">관심사</div>
+            <div class="tag-row"><div class="tag active">건강</div><div class="tag active">여행</div><div class="tag">음식</div><div class="tag">패션</div></div>
+          </div>
+          <div><div class="field-label">메모</div><div class="field-input" style="height:32px;background:#fff;"></div></div>
+        </div>
+        <div class="preview-col">
+          <div class="preview-label-text">미리보기</div>
+          <div class="preview-card"><div class="avatar">홍</div><div class="pname">홍길동</div><div class="pfield">📱 010-1234-5678</div><div class="pfield">👤 남성</div><div class="pfield"><span class="ptag">건강</span><span class="ptag">여행</span></div></div>
+        </div>
+      </div>
+      <div class="modal-footer"><div class="btn-cancel">취소</div><div class="btn-save">추가하기</div></div>
+    </div>
+    <div class="badge badge5">⑤ 연그린 그라데</div>
+    <div class="color-desc">#f0fdf4 → #ecfdf5 (미리보기와 통일감)</div>
+  </div>
+
+</div>
+</body>
+</html>
+<head>
+<meta charset="UTF-8">
+<title>연락처 모달 미리보기 패널 색상 선택</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f1f5f9;
+    padding: 32px 20px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 20px;
+    color: #0f172a;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .subtitle {
+    text-align: center;
+    color: #64748b;
+    font-size: 13px;
+    margin-bottom: 32px;
+  }
+  .grid {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* ── 모달 미니어쳐 ── */
+  .modal-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .modal-wrap:hover .modal-box {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.18);
+  }
+  .badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 14px;
+    border-radius: 20px;
+    background: #1e293b;
+    color: #fff;
+  }
+  .modal-box {
+    width: 340px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    background: #fff;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+  }
+  .modal-box:hover { border-color: #6366f1; }
+
+  /* 헤더 */
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fff;
+  }
+  .modal-header h2 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .modal-header .x {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    border: 1.5px solid #64748b;
+    background: #f8fafc;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #64748b;
+  }
+
+  /* 바디 */
+  .modal-body {
+    display: flex;
+    height: 240px;
+  }
+
+  /* 폼 컬럼 */
+  .form-col {
+    flex: 1;
+    padding: 14px 16px;
+    border-right: 1px solid #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .field-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .field-input {
+    height: 28px;
+    border-radius: 7px;
+    border: 1.5px solid #64748b;
+    background: #fff;
+    width: 100%;
+  }
+  .field-row { display: flex; gap: 8px; }
+  .field-row .field-group { flex: 1; }
+  .tag-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tag {
+    border-radius: 20px;
+    border: 1.5px solid #64748b;
+    padding: 2px 9px;
+    font-size: 9px;
+    color: #64748b;
+    background: #f8fafc;
+  }
+  .tag.active {
+    background: #6366f1;
+    border-color: #6366f1;
+    color: #fff;
+  }
+
+  /* 미리보기 컬럼 */
+  .preview-col {
+    width: 120px;
+    flex-shrink: 0;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+  }
+  .preview-label-text {
+    font-size: 8px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .preview-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px 10px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+  }
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #a78bfa);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #fff;
+    box-shadow: 0 3px 10px rgba(99,102,241,0.3);
+  }
+  .pname { font-size: 10px; font-weight: 700; color: #0f172a; }
+  .pfield {
+    display: flex; align-items: center; gap: 3px;
+    font-size: 9px; color: #475569; width: 100%;
+  }
+  .ptag {
+    background: #ede9fe; color: #6d28d9;
+    border-radius: 20px; padding: 1px 6px;
+    font-size: 8px; font-weight: 500;
+  }
+
+  /* 푸터 */
+  .modal-footer {
+    padding: 10px 16px;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    background: #fff;
+  }
+  .btn-cancel {
+    border: 1.5px solid #64748b;
+    border-radius: 8px;
+    padding: 5px 14px;
+    font-size: 11px;
+    background: #fff;
+    color: #64748b;
+  }
+  .btn-save {
+    border: none;
+    border-radius: 8px;
+    padding: 5px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+  }
+
+  /* 색상별 */
+  .opt1 { background: linear-gradient(160deg, #eef2ff 0%, #e0e7ff 60%, #c7d2fe 100%); }
+  .opt2 { background: linear-gradient(160deg, #ecfdf5 0%, #d1fae5 60%, #a7f3d0 100%); }
+  .opt3 { background: linear-gradient(160deg, #fffbeb 0%, #fef3c7 60%, #fde68a 100%); }
+  .opt4 { background: linear-gradient(160deg, #fff1f2 0%, #ffe4e6 60%, #fecdd3 100%); }
+  .opt5 { background: linear-gradient(160deg, #f0f9ff 0%, #e0f2fe 60%, #bae6fd 100%); }
+
+  .opt1 .preview-label-text { color: #6366f1; }
+  .opt2 .preview-label-text { color: #16a34a; }
+  .opt3 .preview-label-text { color: #d97706; }
+  .opt4 .preview-label-text { color: #e11d48; }
+  .opt5 .preview-label-text { color: #0284c7; }
+
+  .badge1 { background: #6366f1; }
+  .badge2 { background: #16a34a; }
+  .badge3 { background: #d97706; }
+  .badge4 { background: #e11d48; }
+  .badge5 { background: #0284c7; }
+
+  .name-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 4px;
+  }
+  .color-desc {
+    font-size: 11px;
+    color: #64748b;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>연락처 추가/수정 — 미리보기 패널 색상 선택</h1>
+<p class="subtitle">마음에 드는 번호를 알려주세요 👇</p>
+
+<div class="grid">
+
+  <!-- ① 인디고 라벤더 -->
+  <div class="modal-wrap">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>➕ 새 연락처 추가</h2>
+        <div class="x">✕</div>
+      </div>
+      <div class="modal-body">
+        <div class="form-col">
+          <div class="field-row">
+            <div class="field-group"><div class="field-label">이름 *</div><div class="field-input"></div></div>
+            <div class="field-group"><div class="field-label">전화번호 *</div><div class="field-input"></div></div>
+          </div>
+          <div><div class="field-label">이메일</div><div class="field-input"></div></div>
+          <div><div class="field-label">관심사</div>
+            <div class="tag-row">
+              <div class="tag active">건강</div><div class="tag active">여행</div>
+              <div class="tag">음식</div><div class="tag">패션</div>
+            </div>
+          </div>
+          <div><div class="field-label">메모</div><div class="field-input" style="height:36px;"></div></div>
+        </div>
+        <div class="preview-col opt1">
+          <div class="preview-label-text">미리보기</div>
+          <div class="preview-card">
+            <div class="avatar">홍</div>
+            <div class="pname">홍길동</div>
+            <div class="pfield">📱 010-1234-5678</div>
+            <div class="pfield">👤 남성</div>
+            <div class="pfield" style="flex-wrap:wrap;gap:2px;">
+              <span class="ptag">건강</span><span class="ptag">여행</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="btn-cancel">취소</div>
+        <div class="btn-save">추가하기</div>
+      </div>
+    </div>
+    <div class="badge badge1">① 인디고 라벤더</div>
+    <div class="color-desc">#eef2ff → #e0e7ff → #c7d2fe</div>
+  </div>
+
+  <!-- ② 에메랄드 민트 -->
+  <div class="modal-wrap">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>➕ 새 연락처 추가</h2>
+        <div class="x">✕</div>
+      </div>
+      <div class="modal-body">
+        <div class="form-col">
+          <div class="field-row">
+            <div class="field-group"><div class="field-label">이름 *</div><div class="field-input"></div></div>
+            <div class="field-group"><div class="field-label">전화번호 *</div><div class="field-input"></div></div>
+          </div>
+          <div><div class="field-label">이메일</div><div class="field-input"></div></div>
+          <div><div class="field-label">관심사</div>
+            <div class="tag-row">
+              <div class="tag active">건강</div><div class="tag active">여행</div>
+              <div class="tag">음식</div><div class="tag">패션</div>
+            </div>
+          </div>
+          <div><div class="field-label">메모</div><div class="field-input" style="height:36px;"></div></div>
+        </div>
+        <div class="preview-col opt2">
+          <div class="preview-label-text">미리보기</div>
+          <div class="preview-card">
+            <div class="avatar">홍</div>
+            <div class="pname">홍길동</div>
+            <div class="pfield">📱 010-1234-5678</div>
+            <div class="pfield">👤 남성</div>
+            <div class="pfield" style="flex-wrap:wrap;gap:2px;">
+              <span class="ptag">건강</span><span class="ptag">여행</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="btn-cancel">취소</div>
+        <div class="btn-save">추가하기</div>
+      </div>
+    </div>
+    <div class="badge badge2">② 에메랄드 민트</div>
+    <div class="color-desc">#ecfdf5 → #d1fae5 → #a7f3d0</div>
+  </div>
+
+  <!-- ③ 앰버 아이보리 -->
+  <div class="modal-wrap">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>➕ 새 연락처 추가</h2>
+        <div class="x">✕</div>
+      </div>
+      <div class="modal-body">
+        <div class="form-col">
+          <div class="field-row">
+            <div class="field-group"><div class="field-label">이름 *</div><div class="field-input"></div></div>
+            <div class="field-group"><div class="field-label">전화번호 *</div><div class="field-input"></div></div>
+          </div>
+          <div><div class="field-label">이메일</div><div class="field-input"></div></div>
+          <div><div class="field-label">관심사</div>
+            <div class="tag-row">
+              <div class="tag active">건강</div><div class="tag active">여행</div>
+              <div class="tag">음식</div><div class="tag">패션</div>
+            </div>
+          </div>
+          <div><div class="field-label">메모</div><div class="field-input" style="height:36px;"></div></div>
+        </div>
+        <div class="preview-col opt3">
+          <div class="preview-label-text">미리보기</div>
+          <div class="preview-card">
+            <div class="avatar">홍</div>
+            <div class="pname">홍길동</div>
+            <div class="pfield">📱 010-1234-5678</div>
+            <div class="pfield">👤 남성</div>
+            <div class="pfield" style="flex-wrap:wrap;gap:2px;">
+              <span class="ptag">건강</span><span class="ptag">여행</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="btn-cancel">취소</div>
+        <div class="btn-save">추가하기</div>
+      </div>
+    </div>
+    <div class="badge badge3">③ 앰버 아이보리</div>
+    <div class="color-desc">#fffbeb → #fef3c7 → #fde68a</div>
+  </div>
+
+  <!-- ④ 로즈 핑크 -->
+  <div class="modal-wrap">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>➕ 새 연락처 추가</h2>
+        <div class="x">✕</div>
+      </div>
+      <div class="modal-body">
+        <div class="form-col">
+          <div class="field-row">
+            <div class="field-group"><div class="field-label">이름 *</div><div class="field-input"></div></div>
+            <div class="field-group"><div class="field-label">전화번호 *</div><div class="field-input"></div></div>
+          </div>
+          <div><div class="field-label">이메일</div><div class="field-input"></div></div>
+          <div><div class="field-label">관심사</div>
+            <div class="tag-row">
+              <div class="tag active">건강</div><div class="tag active">여행</div>
+              <div class="tag">음식</div><div class="tag">패션</div>
+            </div>
+          </div>
+          <div><div class="field-label">메모</div><div class="field-input" style="height:36px;"></div></div>
+        </div>
+        <div class="preview-col opt4">
+          <div class="preview-label-text">미리보기</div>
+          <div class="preview-card">
+            <div class="avatar">홍</div>
+            <div class="pname">홍길동</div>
+            <div class="pfield">📱 010-1234-5678</div>
+            <div class="pfield">👤 남성</div>
+            <div class="pfield" style="flex-wrap:wrap;gap:2px;">
+              <span class="ptag">건강</span><span class="ptag">여행</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="btn-cancel">취소</div>
+        <div class="btn-save">추가하기</div>
+      </div>
+    </div>
+    <div class="badge badge4">④ 로즈 핑크</div>
+    <div class="color-desc">#fff1f2 → #ffe4e6 → #fecdd3</div>
+  </div>
+
+  <!-- ⑤ 스카이 블루 -->
+  <div class="modal-wrap">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>➕ 새 연락처 추가</h2>
+        <div class="x">✕</div>
+      </div>
+      <div class="modal-body">
+        <div class="form-col">
+          <div class="field-row">
+            <div class="field-group"><div class="field-label">이름 *</div><div class="field-input"></div></div>
+            <div class="field-group"><div class="field-label">전화번호 *</div><div class="field-input"></div></div>
+          </div>
+          <div><div class="field-label">이메일</div><div class="field-input"></div></div>
+          <div><div class="field-label">관심사</div>
+            <div class="tag-row">
+              <div class="tag active">건강</div><div class="tag active">여행</div>
+              <div class="tag">음식</div><div class="tag">패션</div>
+            </div>
+          </div>
+          <div><div class="field-label">메모</div><div class="field-input" style="height:36px;"></div></div>
+        </div>
+        <div class="preview-col opt5">
+          <div class="preview-label-text">미리보기</div>
+          <div class="preview-card">
+            <div class="avatar">홍</div>
+            <div class="pname">홍길동</div>
+            <div class="pfield">📱 010-1234-5678</div>
+            <div class="pfield">👤 남성</div>
+            <div class="pfield" style="flex-wrap:wrap;gap:2px;">
+              <span class="ptag">건강</span><span class="ptag">여행</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="btn-cancel">취소</div>
+        <div class="btn-save">추가하기</div>
+      </div>
+    </div>
+    <div class="badge badge5">⑤ 스카이 블루</div>
+    <div class="color-desc">#f0f9ff → #e0f2fe → #bae6fd</div>
+  </div>
+
+</div>
+
+</body>
+</html>

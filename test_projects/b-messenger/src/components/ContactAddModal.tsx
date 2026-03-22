@@ -6,7 +6,7 @@
 
 import { useState, useCallback } from "react";
 import DaumPostcode, { Address } from "react-daum-postcode";
-import { Contact } from "@/lib/store";
+import { Contact, AddressBook } from "@/lib/store";
 import styles from "@/styles/ContactAddModal.module.css";
 
 // ── 상수 ──
@@ -34,9 +34,10 @@ function formatPhone(v: string): string {
 interface ContactAddModalProps {
   activeBookId: string | null;
   activeBookName: string;
+  addressBooks?: AddressBook[];
   contactToEdit?: Contact | null;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (id?: string) => void;
   onAdd: (data: Omit<Contact, "id" | "createdAt">) => Promise<Contact | null>;
   onEdit: (id: string, data: Partial<Contact>) => Promise<Contact | null>;
 }
@@ -44,6 +45,7 @@ interface ContactAddModalProps {
 export default function ContactAddModal({
   activeBookId,
   activeBookName,
+  addressBooks,
   contactToEdit,
   onClose,
   onSaved,
@@ -80,6 +82,9 @@ export default function ContactAddModal({
   const [memo, setMemo] = useState(contactToEdit?.memo ?? "");
   const [marketingAgree, setMarketingAgree] = useState(contactToEdit?.marketingAgree ?? true);
   const [joinDate, setJoinDate] = useState(contactToEdit?.joinDate ?? "");
+  const [selectedBookId, setSelectedBookId] = useState<string | null>(
+    contactToEdit?.addressBookId ?? activeBookId
+  );
   const [showPostcode, setShowPostcode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -124,7 +129,7 @@ export default function ContactAddModal({
       groupIds: selectedGroups,
       isKakaoFriend: isKakao,
       isCustomer: contactToEdit?.isCustomer ?? false,
-      addressBookId: activeBookId,
+      addressBookId: selectedBookId,
       email: email.trim() || null,
       gender: gender || null,
       birthdate,
@@ -142,7 +147,7 @@ export default function ContactAddModal({
 
     setSaving(false);
     if (result) {
-      onSaved();
+      onSaved(result.id);
     } else {
       setError("저장에 실패했습니다. 다시 시도해주세요.");
     }
@@ -184,6 +189,23 @@ export default function ContactAddModal({
                   />
                 </div>
               </div>
+
+              {/* 주소록 선택 */}
+              {addressBooks && addressBooks.length > 0 && (
+                <div className={styles.formGroupFull}>
+                  <label>주소록</label>
+                  <select
+                    className={styles.select}
+                    value={selectedBookId ?? ""}
+                    onChange={(e) => setSelectedBookId(e.target.value || null)}
+                  >
+                    <option value="">선택 안함 (기본)</option>
+                    {addressBooks.map((book) => (
+                      <option key={book.id} value={book.id}>{book.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* 이메일 */}
               <div className={styles.formGroupFull}>

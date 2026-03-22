@@ -386,6 +386,31 @@
   border-bottom: none !important;
 }
 
+/* 신규 등록 행 하이라이트 */
+.rowNew {
+  background: rgba(16, 185, 129, 0.08) !important;
+  animation: fadeNewRow 5s ease forwards;
+}
+@keyframes fadeNewRow {
+  0%   { background: rgba(16, 185, 129, 0.18); }
+  60%  { background: rgba(16, 185, 129, 0.10); }
+  100% { background: rgba(16, 185, 129, 0.03); }
+}
+
+/* NEW 배지 */
+.newBadge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border-radius: 20px;
+  padding: 1px 7px;
+  vertical-align: middle;
+  letter-spacing: 0.5px;
+}
+
 /* 확장 행 */
 .expandRow td {
   padding: 0 !important;

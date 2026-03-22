@@ -202,22 +202,33 @@ class DataStore {
   // ── 연락처 ──
   async getContacts(onlyCustomers: boolean = false, addressBookId?: string | null): Promise<Contact[]> {
     const tenantId = await getTenantId();
-    let q = supabase
-      .from(TABLES.CONTACTS)
-      .select("*")
-      .eq("tenant_id", tenantId);
+    const CHUNK = 1000;
+    const allRows: Record<string, unknown>[] = [];
+    let from = 0;
 
-    if (onlyCustomers) {
-      q = q.eq("is_customer", true);
+    // Supabase PostgREST max_rows=1000 제한 우회: 1000건씩 반복 요청
+    while (true) {
+      let q = supabase
+        .from(TABLES.CONTACTS)
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false })
+        .range(from, from + CHUNK - 1);
+
+      if (onlyCustomers) q = q.eq("is_customer", true);
+      if (addressBookId !== undefined && addressBookId !== null) {
+        q = q.eq("address_book_id", addressBookId);
+      }
+
+      const { data, error } = await q;
+      if (error) { console.error("연락처 조회 오류:", error); break; }
+      if (!data || data.length === 0) break;
+      allRows.push(...data);
+      if (data.length < CHUNK) break;
+      from += CHUNK;
     }
-    if (addressBookId !== undefined && addressBookId !== null) {
-      q = q.eq("address_book_id", addressBookId);
-    }
 
-    const { data, error } = await q.order("created_at", { ascending: false }).range(0, 9999);
-
-    if (error) { console.error("연락처 조회 오류:", error); return []; }
-    return (data || []).map(dbToContact);
+    return allRows.map(dbToContact);
   }
 
   // 서버사이드 페이지네이션 + 검색 + 정렬
@@ -821,13 +832,17 @@ class DataStore {
   }
 
   async addAddressBook(name: string, plan: string): Promise<{ success: boolean; error?: string; data?: AddressBook }> {
-    if (plan !== "enterprise") {
-      return { success: false, error: "Enterprise 요금제에서만 사용 가능합니다." };
+    const isPro = plan === "pro" || plan === "enterprise";
+    const isEnterprise = plan === "enterprise";
+    const MAX_BOOKS = isEnterprise ? 5 : isPro ? 2 : 0;
+
+    if (!isPro) {
+      return { success: false, error: "Pro 이상 요금제에서만 주소록을 추가할 수 있습니다." };
     }
     const tenantId = await getTenantId();
     const existing = await this.getAddressBooks();
-    if (existing.length >= 5) {
-      return { success: false, error: "주소록은 최대 5개까지만 추가할 수 있습니다." };
+    if (existing.length >= MAX_BOOKS) {
+      return { success: false, error: `주소록은 현재 플랜에서 최대 ${MAX_BOOKS}개까지만 추가할 수 있습니다.` };
     }
     const usedSlots = existing.map(b => b.slot);
     let nextSlot = 1;

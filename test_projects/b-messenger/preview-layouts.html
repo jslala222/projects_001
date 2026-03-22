@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>그룹 관리 레이아웃 5가지 비교</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0f172a; font-family: -apple-system, "Pretendard", "Noto Sans KR", sans-serif; color: #e2e8f0; padding: 32px; }
+
+h1 { font-size: 18px; color: #f1f5f9; margin-bottom: 8px; }
+.subtitle { font-size: 13px; color: #64748b; margin-bottom: 40px; }
+
+/* 섹션 */
+.section { margin-bottom: 56px; }
+.section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #1e293b; }
+.section-num { width: 28px; height: 28px; border-radius: 50%; background: #6366f1; color: white; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.section-title { font-size: 16px; font-weight: 700; color: #f1f5f9; }
+.section-desc { font-size: 12px; color: #64748b; margin-top: 2px; }
+.badge-current { background: #1e3a2f; color: #4ade80; border: 1px solid #166534; border-radius: 4px; padding: 2px 8px; font-size: 11px; }
+.badge-rec { background: #312e81; color: #a5b4fc; border: 1px solid #4338ca; border-radius: 4px; padding: 2px 8px; font-size: 11px; }
+
+/* 미리보기 박스 */
+.preview { background: #111827; border: 1px solid #1e293b; border-radius: 14px; padding: 20px; max-width: 780px; }
+
+/* ─── 공통 버튼 ─── */
+.btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; border: 1px solid; font-size: 11.5px; cursor: pointer; white-space: nowrap; }
+.btn-ghost { background: #1e293b; color: #94a3b8; border-color: #334155; }
+.btn-primary { background: #6366f1; color: white; border-color: #4f46e5; font-weight: 600; }
+.btn-green { background: #0f2f1a; color: #4ade80; border-color: #166534; }
+.btn-blue { background: #0c1e3a; color: #60a5fa; border-color: #1e3a5f; }
+.btn-violet { background: #1e1035; color: #a78bfa; border-color: #3b2a6b; }
+.btn-red { background: transparent; color: #f87171; border-color: transparent; }
+.btn-sm { padding: 3px 8px; font-size: 11px; }
+.btn-xs { padding: 2px 6px; font-size: 10.5px; }
+
+/* ─── 공통 카드 ─── */
+.card { background: #1e293b; border-radius: 10px; border: 1px solid #334155; }
+
+/* ═══════════════════════════════════
+   안 A: 현재 방식 (인라인 트리)
+═══════════════════════════════════ */
+.tree-root {
+  background: linear-gradient(135deg, #e0e7ff 0%, #f0f4ff 100%);
+  border: 2px solid #c7d2fe;
+  border-left: 5px solid #6366f1;
+  border-radius: 12px;
+  padding: 14px 14px 10px;
+  margin-bottom: 6px;
+}
+.tree-root-name { font-size: 15px; font-weight: 800; color: #1e1b4b; }
+.tree-root-desc { font-size: 11.5px; color: #6366f1; margin-top: 3px; }
+.tree-l1 {
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-left: 4px solid #0ea5e9;
+  border-radius: 9px;
+  padding: 9px 12px;
+  margin: 3px 0 3px 32px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13.5px; font-weight: 700; color: #0f172a;
+  min-height: 44px;
+}
+.tree-l2 {
+  background: #f8fafc;
+  border: 1px solid #e8edf3;
+  border-left: 3px solid #22c55e;
+  border-radius: 8px;
+  padding: 7px 12px;
+  margin: 2px 0 2px 64px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px; font-weight: 600; color: #1e293b;
+  min-height: 38px;
+}
+.tree-l3 {
+  background: #f8fafc;
+  border: 1px solid #eef1f5;
+  border-left: 2px solid #f59e0b;
+  border-radius: 7px;
+  padding: 5px 12px;
+  margin: 2px 0 2px 96px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 500; color: #475569;
+  min-height: 32px;
+}
+.tree-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.tree-badge { font-size: 9.5px; font-weight: 700; padding: 1px 5px; border-radius: 20px; border: 1px solid; flex-shrink: 0; }
+.badge-max { background: #ede9fe; color: #6366f1; border-color: #c4b5fd; }
+.badge-l1  { background: #e0f2fe; color: #0284c7; border-color: #bae6fd; }
+.badge-l2  { background: #dcfce7; color: #16a34a; border-color: #bbf7d0; }
+.badge-l3  { background: #fef9c3; color: #b45309; border-color: #fde68a; }
+.tree-name { flex: 1; }
+.tree-desc-inline { font-size: 10.5px; color: #94a3b8; margin-left: 4px; }
+.tree-member { font-size: 11px; color: #94a3b8; white-space: nowrap; margin-left: auto; }
+.tree-actions { display: flex; gap: 3px; margin-left: 8px; }
+.tree-more { font-size: 11px; color: #64748b; padding: 6px 0 0 96px; }
+
+/* ═══════════════════════════════════
+   안 B: 2단 패널 (마스터-디테일)
+═══════════════════════════════════ */
+.panel-wrap { display: flex; gap: 12px; height: 320px; }
+.panel-left { width: 200px; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+.panel-item {
+  padding: 10px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.15s;
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-item:hover { background: #1e293b; border-color: #334155; }
+.panel-item.active { background: #1e1b4b; border-color: #6366f1; }
+.panel-item-icon { font-size: 18px; }
+.panel-item-name { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+.panel-item-count { font-size: 10.5px; color: #64748b; }
+.panel-item.active .panel-item-name { color: #a5b4fc; }
+.panel-right { flex: 1; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; padding: 2px; }
+.panel-right-header { font-size: 16px; font-weight: 800; color: #f1f5f9; padding: 0 2px 8px; border-bottom: 1px solid #1e293b; display: flex; align-items: center; gap: 8px; }
+.panel-sub-item {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-sub-l2 { margin-left: 20px; background: #172032; border-color: #2d3a52; }
+.panel-sub-l3 { margin-left: 40px; background: #111827; border-color: #243046; font-size: 12px; }
+
+/* ═══════════════════════════════════
+   안 C: 모달 드릴다운
+═══════════════════════════════════ */
+.modal-bg { background: #1e293b; border-radius: 12px; padding: 16px; position: relative; }
+.modal-topbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #334155; }
+.breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 12.5px; }
+.breadcrumb-item { color: #64748b; cursor: pointer; }
+.breadcrumb-item:hover { color: #a5b4fc; }
+.breadcrumb-sep { color: #334155; }
+.breadcrumb-item.active { color: #f1f5f9; font-weight: 700; }
+.modal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.modal-card {
+  background: #0f172a;
+  border: 1.5px solid #334155;
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.modal-card:hover { border-color: #6366f1; box-shadow: 0 0 0 2px #6366f122; }
+.modal-card-icon { font-size: 18px; margin-bottom: 4px; }
+.modal-card-name { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+.modal-card-count { font-size: 11px; color: #64748b; margin-top: 2px; }
+.modal-card-arrow { font-size: 10px; color: #4338ca; margin-top: 6px; }
+
+/* ═══════════════════════════════════
+   안 D: 탭 + 아코디언
+═══════════════════════════════════ */
+.tab-bar { display: flex; gap: 2px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 2px; }
+.tab-item { padding: 6px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; border: 1.5px solid transparent; color: #64748b; }
+.tab-item:hover { color: #a5b4fc; background: #1e1b4b22; }
+.tab-item.tab-active { background: #1e1b4b; color: #a5b4fc; border-color: #4338ca; }
+.accord-item { background: #1e293b; border: 1px solid #334155; border-radius: 9px; margin-bottom: 4px; overflow: hidden; }
+.accord-header { padding: 10px 14px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13.5px; font-weight: 700; color: #f1f5f9; }
+.accord-header:hover { background: #243046; }
+.accord-body { background: #0f172a; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
+.accord-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; font-size: 12.5px; color: #cbd5e1; }
+.accord-row:hover { background: #1e293b; }
+.accord-l2 { margin-left: 20px; font-size: 12px; color: #94a3b8; }
+
+/* ═══════════════════════════════════
+   안 E: 가상 스크롤 평탄화
+═══════════════════════════════════ */
+.flat-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.flat-filter { background: #1e293b; border: 1px solid #334155; color: #f1f5f9; border-radius: 7px; padding: 5px 10px; font-size: 12px; }
+.flat-list { display: flex; flex-direction: column; gap: 2px; }
+.flat-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; border: 1px solid transparent; transition: background 0.12s; cursor: pointer; }
+.flat-row:hover { background: #1e293b; border-color: #334155; }
+.flat-indent-0 { padding-left: 10px; font-size: 13.5px; font-weight: 800; color: #f1f5f9; background: #1e1b4b22; border-color: #312e81; border-radius: 9px; }
+.flat-indent-1 { padding-left: 30px; font-size: 13px; font-weight: 700; color: #e2e8f0; }
+.flat-indent-2 { padding-left: 52px; font-size: 12.5px; font-weight: 600; color: #cbd5e1; }
+.flat-indent-3 { padding-left: 74px; font-size: 12px; color: #94a3b8; }
+.flat-label { flex: 1; }
+.flat-desc { font-size: 10.5px; color: #475569; margin-left: 4px; }
+.flat-count { font-size: 11px; color: #64748b; margin-left: auto; white-space: nowrap; }
+.flat-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+.flat-row:hover .flat-actions { opacity: 1; }
+
+/* 평가 표 */
+.eval-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 40px; }
+.eval-table th { background: #1e293b; color: #94a3b8; padding: 8px 12px; text-align: left; font-weight: 600; }
+.eval-table td { border-bottom: 1px solid #1e2c3d; padding: 8px 12px; color: #cbd5e1; }
+.eval-table tr:hover td { background: #1e293b22; }
+.good { color: #4ade80; }
+.bad { color: #f87171; }
+.mid { color: #fbbf24; }
+.rec-row td { background: #1e1b4b33; }
+</style>
+</head>
+<body>
+
+<h1>그룹 관리 레이아웃 — 5가지 방식 비교</h1>
+<p class="subtitle">현재 방식(A) vs 대안 4가지 시각적 비교 / 스크롤로 확인</p>
+
+<!-- ══════ 안 A ══════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">A</div>
+    <div>
+      <div class="section-title">인라인 들여쓰기 트리 &nbsp;<span class="badge-current">현재 방식</span></div>
+      <div class="section-desc">전체 노드를 한 페이지에 인라인으로 펼침 — 항목 많으면 스크롤 폭발</div>
+    </div>
+  </div>
+  <div class="preview">
+    <!-- 최상위 -->
+    <div class="tree-root">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:18px;">🏠</span>
+        <span class="tree-badge badge-max">최상위</span>
+        <span class="tree-root-name">라이프스타일</span>
+        <span class="tree-member" style="margin-left:auto;">0명</span>
+        <div class="tree-actions">
+          <button class="btn btn-ghost btn-sm">📁 하위</button>
+          <button class="btn btn-ghost btn-sm">👤 멤버</button>
+          <button class="btn btn-ghost btn-sm">✈ 발송</button>
+          <button class="btn btn-red btn-sm">🗑</button>
+        </div>
+      </div>
+      <div class="tree-root-desc">생애주기 맞춤형 상품 발송에 활용</div>
+    </div>
+    <!-- 대 -->
+    <div class="tree-l1">
+      <span class="tree-dot" style="background:#0ea5e9;"></span>
+      <span class="tree-badge badge-l1">대</span>
+      <span class="tree-name">영유아/육아</span>
+      <span class="tree-member">0명</span>
+      <div class="tree-actions">
+        <button class="btn btn-blue btn-xs">📁</button>
+        <button class="btn btn-green btn-xs">👤</button>
+        <button class="btn btn-violet btn-xs">✈</button>
+        <button class="btn btn-red btn-xs">🗑</button>
+      </div>
+    </div>
+    <!-- 중 -->
+    <div class="tree-l2">
+      <span class="tree-dot" style="background:#22c55e;width:7px;height:7px;"></span>
+      <span class="tree-badge badge-l2">중</span>
+      <span class="tree-name">출산/임산부</span>
+      <span class="tree-member">0명</span>
+      <div class="tree-actions">
+        <button class="btn btn-blue btn-xs">📁</button>
+        <button class="btn btn-green btn-xs">👤</button>
+        <button class="btn btn-red btn-xs">🗑</button>
+      </div>
+    </div>
+    <!-- 소 -->
+    <div class="tree-l3">
+      <span class="tree-dot" style="background:#f59e0b;width:6px;height:6px;"></span>
+      <span class="tree-badge badge-l3">소</span>
+      <span class="tree-name">미취학아동<span class="tree-desc-inline">유모차/카시트, 이유식</span></span>
+      <span class="tree-member">0명</span>
+      <div class="tree-actions">
+        <button class="btn btn-green btn-xs">👤</button>
+        <button class="btn btn-red btn-xs">🗑</button>
+      </div>
+    </div>
+    <div class="tree-l3">
+      <span class="tree-dot" style="background:#f59e0b;width:6px;height:6px;"></span>
+      <span class="tree-badge badge-l3">소</span>
+      <span class="tree-name">초등학생<span class="tree-desc-inline">학습지, 방과후, 아동복</span></span>
+      <span class="tree-member">0명</span>
+      <div class="tree-actions">
+        <button class="btn btn-green btn-xs">👤</button>
+        <button class="btn btn-red btn-xs">🗑</button>
+      </div>
+    </div>
+    <div class="tree-more">⚠️ 항목이 더 있으면 계속 아래로... 100개가 되면 스크롤이 매우 길어짐</div>
+  </div>
+</div>
+
+<!-- ══════ 안 B ══════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num" style="background:#0ea5e9;">B</div>
+    <div>
+      <div class="section-title">2단 패널 (마스터-디테일)</div>
+      <div class="section-desc">좌측: 최상위 그룹 목록 / 우측: 선택한 최상위의 하위 그룹 탐색</div>
+    </div>
+  </div>
+  <div class="preview">
+    <div class="panel-wrap">
+      <!-- 좌 -->
+      <div class="panel-left">
+        <div style="font-size:11px;color:#475569;padding:0 4px 6px;border-bottom:1px solid #1e293b;margin-bottom:4px;">최상위 그룹 (5)</div>
+        <div class="panel-item"><span class="panel-item-icon">🏦</span><div><div class="panel-item-name">금융/보험</div><div class="panel-item-count">14개 그룹</div></div></div>
+        <div class="panel-item active"><span class="panel-item-icon">🏠</span><div><div class="panel-item-name">라이프스타일</div><div class="panel-item-count">13개 그룹</div></div></div>
+        <div class="panel-item"><span class="panel-item-icon">🏢</span><div><div class="panel-item-name">B2B 거래처</div><div class="panel-item-count">12개 그룹</div></div></div>
+        <div class="panel-item"><span class="panel-item-icon">💼</span><div><div class="panel-item-name">직업/산업군</div><div class="panel-item-count">13개 그룹</div></div></div>
+        <div class="panel-item"><span class="panel-item-icon">🎯</span><div><div class="panel-item-name">취미생활</div><div class="panel-item-count">12개 그룹</div></div></div>
+      </div>
+      <!-- 우 -->
+      <div class="panel-right">
+        <div class="panel-right-header">🏠 라이프스타일 <span style="font-size:11px;color:#64748b;font-weight:400;">13개 하위 그룹</span></div>
+        <div class="panel-sub-item">
+          <span class="tree-badge badge-l1">대</span>
+          <span style="font-size:13px;font-weight:700;color:#e2e8f0;flex:1;">영유아/육아</span>
+          <button class="btn btn-ghost btn-xs">펼치기 ▼</button>
+        </div>
+        <div class="panel-sub-item panel-sub-l2">
+          <span class="tree-badge badge-l2">중</span>
+          <span style="font-size:12.5px;font-weight:600;color:#cbd5e1;flex:1;">출산/임산부</span>
+          <span style="font-size:11px;color:#475569;">0명</span>
+        </div>
+        <div class="panel-sub-item panel-sub-l3">
+          <span class="tree-badge badge-l3">소</span>
+          <span style="flex:1;color:#94a3b8;">미취학아동</span>
+          <span style="font-size:11px;color:#334155;">0명</span>
+          <button class="btn btn-ghost btn-xs">👤</button>
+        </div>
+        <div class="panel-sub-item panel-sub-l3">
+          <span class="tree-badge badge-l3">소</span>
+          <span style="flex:1;color:#94a3b8;">초등학생</span>
+          <span style="font-size:11px;color:#334155;">0명</span>
+          <button class="btn btn-ghost btn-xs">👤</button>
+        </div>
+        <div class="panel-sub-item">
+          <span class="tree-badge badge-l1">대</span>
+          <span style="font-size:13px;font-weight:700;color:#e2e8f0;flex:1;">주거환경</span>
+          <button class="btn btn-ghost btn-xs">펼치기 ▼</button>
+        </div>
+        <div class="panel-sub-item">
+          <span class="tree-badge badge-l1">대</span>
+          <span style="font-size:13px;font-weight:700;color:#e2e8f0;flex:1;">반려동물</span>
+          <button class="btn btn-ghost btn-xs">펼치기 ▼</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ 안 C ══════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num" style="background:#22c55e;">C</div>
+    <div>
+      <div class="section-title">모달 드릴다운 (breadcrumb 탐색)</div>
+      <div class="section-desc">최상위 카드 클릭 → 모달 열림 → 하위 탐색 시 breadcrumb로 위치 표시</div>
+    </div>
+  </div>
+  <div class="preview">
+    <!-- 메인 화면: 최상위 카드 그리드 -->
+    <div style="font-size:12px;color:#475569;margin-bottom:10px;">메인 화면 — 최상위만 카드로 표시</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+      <div style="background:#1e1b4b;border:1.5px solid #4338ca;border-radius:10px;padding:12px;cursor:pointer;">
+        <div style="font-size:18px;margin-bottom:4px;">🏦</div>
+        <div style="font-size:13px;font-weight:700;color:#a5b4fc;">금융/보험</div>
+        <div style="font-size:11px;color:#4338ca;">14개 그룹 →</div>
+      </div>
+      <div style="background:#0c1e3a;border:1.5px solid #1e3a5f;border-radius:10px;padding:12px;cursor:pointer;">
+        <div style="font-size:18px;margin-bottom:4px;">🏠</div>
+        <div style="font-size:13px;font-weight:700;color:#60a5fa;">라이프</div>
+        <div style="font-size:11px;color:#1e3a5f;">13개 그룹 →</div>
+      </div>
+      <div style="background:#0f2f1a;border:1.5px solid #166534;border-radius:10px;padding:12px;cursor:pointer;">
+        <div style="font-size:18px;margin-bottom:4px;">🏢</div>
+        <div style="font-size:13px;font-weight:700;color:#4ade80;">B2B</div>
+        <div style="font-size:11px;color:#166534;">12개 그룹 →</div>
+      </div>
+      <div style="background:#1e293b;border:1.5px dashed #334155;border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:20px;color:#334155;">+</span>
+      </div>
+    </div>
+    <!-- 모달 -->
+    <div style="font-size:12px;color:#475569;margin-bottom:10px;">카드 클릭 시 → 모달 팝업</div>
+    <div class="modal-bg">
+      <div class="modal-topbar">
+        <div class="breadcrumb">
+          <span class="breadcrumb-item">🏠 라이프스타일</span>
+          <span class="breadcrumb-sep">›</span>
+          <span class="breadcrumb-item active">영유아/육아</span>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button class="btn btn-primary btn-sm">+ 하위 추가</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:14px;padding:2px 8px;">✕</button>
+        </div>
+      </div>
+      <div class="modal-grid">
+        <div class="modal-card">
+          <div class="modal-card-icon">🤱</div>
+          <div class="modal-card-name">출산/임산부</div>
+          <div class="modal-card-count">중 · 0명</div>
+          <div class="modal-card-arrow">하위 2개 →</div>
+        </div>
+        <div class="modal-card">
+          <div class="modal-card-icon">🧒</div>
+          <div class="modal-card-name">미취학아동</div>
+          <div class="modal-card-count">중 · 0명</div>
+          <div class="modal-card-arrow">하위 3개 →</div>
+        </div>
+        <div class="modal-card" style="border-style:dashed;opacity:0.5;">
+          <div class="modal-card-name" style="color:#334155;">+ 중분류 추가</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ 안 D ══════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num" style="background:#f59e0b;">D</div>
+    <div>
+      <div class="section-title">탭 + 아코디언 &nbsp;<span class="badge-rec">⭐ 추천</span></div>
+      <div class="section-desc">최상위를 탭으로 전환, 선택된 최상위 아래 대/중/소 아코디언 — 한 화면에 집중</div>
+    </div>
+  </div>
+  <div class="preview">
+    <div class="tab-bar">
+      <div class="tab-item">🏦 금융/보험</div>
+      <div class="tab-item tab-active">🏠 라이프스타일</div>
+      <div class="tab-item">🏢 B2B</div>
+      <div class="tab-item">💼 직업/산업</div>
+      <div class="tab-item">🎯 취미생활</div>
+      <div class="tab-item" style="color:#334155;">+ 추가</div>
+    </div>
+    <!-- 선택된 최상위 정보 -->
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#1e1b4b22;border:1px solid #312e81;border-radius:9px;margin-bottom:8px;">
+      <span style="font-size:20px;">🏠</span>
+      <div>
+        <div style="font-weight:800;font-size:15px;color:#a5b4fc;">라이프스타일</div>
+        <div style="font-size:11.5px;color:#4338ca;">생애주기 맞춤형 발송 · 대분류 4개</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:6px;">
+        <button class="btn btn-ghost btn-sm">✏️ 수정</button>
+        <button class="btn btn-primary btn-sm">+ 대분류 추가</button>
+      </div>
+    </div>
+    <!-- 아코디언 -->
+    <div class="accord-item">
+      <div class="accord-header">
+        <span>▼</span>
+        <span class="tree-badge badge-l1">대</span>
+        <span>영유아/육아</span>
+        <span style="font-size:11px;color:#475569;margin-left:4px;">중 3개</span>
+        <div style="margin-left:auto;display:flex;gap:4px;">
+          <button class="btn btn-ghost btn-xs">+ 중분류</button>
+          <button class="btn btn-red btn-xs">🗑</button>
+        </div>
+      </div>
+      <div class="accord-body">
+        <div class="accord-row">
+          <span class="tree-badge badge-l2">중</span>
+          <span>출산/임산부</span>
+          <span style="font-size:11px;color:#475569;margin-left:4px;">소 2개</span>
+          <div style="margin-left:auto;display:flex;gap:4px;"><button class="btn btn-ghost btn-xs">+ 소분류</button><button class="btn btn-red btn-xs">🗑</button></div>
+        </div>
+        <div class="accord-row accord-l2">
+          <span class="tree-badge badge-l3">소</span>
+          <span>미취학아동</span>
+          <span style="font-size:10.5px;color:#334155;margin-left:4px;">유모차/카시트...</span>
+          <div style="margin-left:auto;display:flex;gap:4px;"><button class="btn btn-ghost btn-xs">👤 멤버</button><button class="btn btn-red btn-xs">🗑</button></div>
+        </div>
+        <div class="accord-row accord-l2">
+          <span class="tree-badge badge-l3">소</span>
+          <span>초등학생</span>
+          <span style="font-size:10.5px;color:#334155;margin-left:4px;">학습지, 방과후...</span>
+          <div style="margin-left:auto;display:flex;gap:4px;"><button class="btn btn-ghost btn-xs">👤 멤버</button><button class="btn btn-red btn-xs">🗑</button></div>
+        </div>
+        <div class="accord-row">
+          <span class="tree-badge badge-l2">중</span>
+          <span>주거환경</span>
+          <span style="font-size:11px;color:#475569;margin-left:4px;">소 2개</span>
+          <div style="margin-left:auto;display:flex;gap:4px;"><button class="btn btn-ghost btn-xs">+ 소분류</button><button class="btn btn-red btn-xs">🗑</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="accord-item">
+      <div class="accord-header" style="background:#1e293b44;">
+        <span style="color:#475569;">▶</span>
+        <span class="tree-badge badge-l1">대</span>
+        <span>반려동물</span>
+        <span style="font-size:11px;color:#475569;margin-left:4px;">중 3개 (접혀있음)</span>
+        <div style="margin-left:auto;display:flex;gap:4px;">
+          <button class="btn btn-ghost btn-xs">+ 중분류</button>
+          <button class="btn btn-red btn-xs">🗑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ 안 E ══════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num" style="background:#ec4899;">E</div>
+    <div>
+      <div class="section-title">평탄화 리스트 + 필터/검색</div>
+      <div class="section-desc">모든 그룹을 평탄화해서 한 리스트로, 검색/필터로 원하는 그룹을 빠르게 찾음</div>
+    </div>
+  </div>
+  <div class="preview">
+    <div class="flat-toolbar">
+      <input placeholder="🔍  그룹 검색..." class="flat-filter" style="flex:1;" value="보험">
+      <select class="flat-filter"><option>전체 깊이</option><option>최상위만</option><option>대분류</option></select>
+      <button class="btn btn-primary btn-sm">+ 그룹 추가</button>
+    </div>
+    <div class="flat-list">
+      <div class="flat-row flat-indent-0">
+        <span style="font-size:16px;">🏦</span>
+        <span class="flat-label">금융/보험</span>
+        <span class="tree-badge badge-max">최상위</span>
+        <span class="flat-count">14개 하위</span>
+        <div class="flat-actions">
+          <button class="btn btn-ghost btn-xs">+ 하위</button>
+          <button class="btn btn-ghost btn-xs">✏️</button>
+          <button class="btn btn-red btn-xs">🗑</button>
+        </div>
+      </div>
+      <div class="flat-row flat-indent-1">
+        <span class="tree-badge badge-l1">대</span>
+        <span class="flat-label">보험</span>
+        <span class="flat-count">중 4개</span>
+        <div class="flat-actions">
+          <button class="btn btn-ghost btn-xs">+ 하위</button>
+          <button class="btn btn-ghost btn-xs">✏️</button>
+          <button class="btn btn-red btn-xs">🗑</button>
+        </div>
+      </div>
+      <div class="flat-row flat-indent-2">
+        <span class="tree-badge badge-l2">중</span>
+        <span class="flat-label">생명보험</span>
+        <span class="flat-count">소 3개</span>
+        <div class="flat-actions">
+          <button class="btn btn-ghost btn-xs">+ 하위</button>
+          <button class="btn btn-ghost btn-xs">✏️</button>
+          <button class="btn btn-red btn-xs">🗑</button>
+        </div>
+      </div>
+      <div class="flat-row flat-indent-3">
+        <span class="tree-badge badge-l3">소</span>
+        <span class="flat-label">종신<span class="flat-desc">사망보장, 납입면제</span></span>
+        <span class="flat-count">0명</span>
+        <div class="flat-actions">
+          <button class="btn btn-ghost btn-xs">👤 멤버</button>
+          <button class="btn btn-red btn-xs">🗑</button>
+        </div>
+      </div>
+      <div class="flat-row flat-indent-3">
+        <span class="tree-badge badge-l3">소</span>
+        <span class="flat-label">정기보험<span class="flat-desc">기간보장, 저렴한 보험료</span></span>
+        <span class="flat-count">0명</span>
+        <div class="flat-actions">
+          <button class="btn btn-ghost btn-xs">👤 멤버</button>
+          <button class="btn btn-red btn-xs">🗑</button>
+        </div>
+      </div>
+      <div class="flat-row flat-indent-2">
+        <span class="tree-badge badge-l2">중</span>
+        <span class="flat-label">손해보험</span>
+        <span class="flat-count">소 2개</span>
+        <div class="flat-actions">
+          <button class="btn btn-ghost btn-xs">+ 하위</button>
+          <button class="btn btn-ghost btn-xs">✏️</button>
+          <button class="btn btn-red btn-xs">🗑</button>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11.5px;color:#475569;margin-top:10px;padding-top:8px;border-top:1px solid #1e293b;">
+      ✓ "보험" 검색 결과 6개 표시 중 — 전체는 접기/펼치기 없이 스크롤
+    </div>
+  </div>
+</div>
+
+<!-- 비교 표 -->
+<table class="eval-table">
+  <thead>
+    <tr>
+      <th>항목</th>
+      <th>A. 현재</th>
+      <th>B. 2단 패널</th>
+      <th>C. 모달</th>
+      <th>D. 탭+아코디언 ⭐</th>
+      <th>E. 평탄화</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>항목 많을 때 스크롤</td>
+      <td class="bad">❌ 매우 길어짐</td>
+      <td class="good">✅ 좌우 분리</td>
+      <td class="good">✅ 모달 내부</td>
+      <td class="good">✅ 탭별 분리</td>
+      <td class="mid">△ 길어지나 검색</td>
+    </tr>
+    <tr>
+      <td>전체 구조 파악</td>
+      <td class="good">✅ 한눈에</td>
+      <td class="mid">△ 우측만</td>
+      <td class="bad">❌ 드릴다운</td>
+      <td class="mid">△ 탭별 파악</td>
+      <td class="good">✅ 검색으로</td>
+    </tr>
+    <tr>
+      <td>멤버 추가 편의성</td>
+      <td class="good">✅ 행 내 버튼</td>
+      <td class="good">✅ 행 내 버튼</td>
+      <td class="mid">△ 모달 내</td>
+      <td class="good">✅ 행 내 버튼</td>
+      <td class="good">✅ 행 내 버튼</td>
+    </tr>
+    <tr>
+      <td>현재 코드 재사용</td>
+      <td class="good">✅ 그대로</td>
+      <td class="mid">△ 레이아웃 추가</td>
+      <td class="mid">△ 모달 컴포넌트</td>
+      <td class="good">✅ 탭+CSS만</td>
+      <td class="mid">△ 평탄화 로직</td>
+    </tr>
+    <tr>
+      <td>구현 공수</td>
+      <td class="good">✅ 0</td>
+      <td class="mid">△ 중간</td>
+      <td class="bad">❌ 높음</td>
+      <td class="good">✅ 낮음</td>
+      <td class="mid">△ 중간</td>
+    </tr>
+    <tr class="rec-row">
+      <td><strong>추천</strong></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td><strong class="good">⭐ 추천</strong></td>
+      <td>보조 기능</td>
+    </tr>
+  </tbody>
+</table>
+
+</body>
+</html>

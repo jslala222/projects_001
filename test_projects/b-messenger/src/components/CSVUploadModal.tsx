@@ -6,7 +6,8 @@
 
 import { useState, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
-import { Contact, AddressBook } from "@/lib/store";
+import { dataStore, Contact, AddressBook } from "@/lib/store";
+import { usePlan } from "@/hooks/usePlan";
 import styles from "@/styles/CSVUploadModal.module.css";
 
 // ── 헤더 자동 매핑 규칙 ──
@@ -131,6 +132,7 @@ export default function CSVUploadModal({
   onUploaded,
   onAddContacts,
 }: CSVUploadModalProps) {
+  const { limits } = usePlan();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
   const [headers, setHeaders] = useState<string[]>([]);
@@ -141,6 +143,7 @@ export default function CSVUploadModal({
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<{ success: number; skip: number } | null>(null);
   const [error, setError] = useState("");
+  const [limitError, setLimitError] = useState("");
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   // ── 헤더 자동 매핑 ──
@@ -273,6 +276,22 @@ export default function CSVUploadModal({
         addressBookId: targetBookId,
         source: "csv",  // CSV 업로드 표시 → 수정 시 'manual'로 자동 전환됨
       });
+    }
+
+    // ── 플랜별 인원 한도 체크 ──
+    if (limits.maxContacts !== Infinity) {
+      const currentCount = await dataStore.getContactsCount();
+      const remaining = limits.maxContacts - currentCount;
+      if (remaining <= 0) {
+        setLimitError(`현재 플랜 한도(${limits.maxContacts.toLocaleString()}명)에 이미 도달했습니다.\n업그레이드 후 이용해 주세요.`);
+        setUploading(false);
+        return;
+      }
+      if (currentCount + contacts.length > limits.maxContacts) {
+        setLimitError(`업로드 ${contacts.length.toLocaleString()}명 중 ${remaining.toLocaleString()}명만 추가 가능합니다.\n\n현재 등록: ${currentCount.toLocaleString()}명\n플랜 한도: ${limits.maxContacts.toLocaleString()}명\n추가 가능: ${remaining.toLocaleString()}명\n\n파일 인원을 줄여서 다시 시도해주세요.`);
+        setUploading(false);
+        return;
+      }
     }
 
     // 배치 INSERT (100건씩)
@@ -501,6 +520,60 @@ export default function CSVUploadModal({
           )}
         </div>
       </div>
+
+      {/* 플랜 한도 초과 알림 모달 */}
+      {limitError && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.6)",
+        }}>
+          <div style={{
+            background: "#1e1e2e",
+            border: "1px solid #f87171",
+            borderRadius: 16,
+            padding: "32px 28px",
+            maxWidth: 420,
+            width: "90%",
+            textAlign: "center",
+            boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
+          }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🚫</div>
+            <h3 style={{ fontSize: 17, fontWeight: 700, color: "#f87171", marginBottom: 16 }}>
+              업로드 제한 초과
+            </h3>
+            <p style={{
+              fontSize: 14, color: "#e2e8f0", lineHeight: 1.8,
+              whiteSpace: "pre-line", marginBottom: 24,
+            }}>
+              {limitError}
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button
+                onClick={() => setLimitError("")}
+                style={{
+                  padding: "9px 22px", borderRadius: 8,
+                  background: "#374151", color: "#fff",
+                  border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14,
+                }}
+              >
+                닫기
+              </button>
+              <a
+                href="/pricing"
+                style={{
+                  padding: "9px 22px", borderRadius: 8,
+                  background: "#7c3aed", color: "#fff",
+                  border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14,
+                  textDecoration: "none", display: "inline-block",
+                }}
+              >
+                플랜 업그레이드 →
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
