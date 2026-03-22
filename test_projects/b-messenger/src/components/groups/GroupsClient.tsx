@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition, useEffect, useCallback } from "react";
+import { useState, useTransition, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Users2, Plus, Pencil, Trash2, UserPlus, X, Search, ChevronRight, ChevronDown, FolderPlus } from "lucide-react";
+import { Users2, Plus, Pencil, Trash2, UserPlus, X, Search, ChevronRight, ChevronDown, FolderPlus, AlertTriangle, Send } from "lucide-react";
 import { toast } from "sonner";
 import type { Group, Customer } from "@/types";
 import { dataStore, type AddressBook } from "@/lib/store";
@@ -17,6 +17,7 @@ import {
 import { getCustomers } from "@/app/actions/customers";
 import { checkPhoneType, PHONE_TYPE_LABEL, PHONE_TYPE_BADGE_CLASS } from "@/lib/phoneUtils";
 import { formatPhone } from "@/lib/phoneUtils";
+import GroupSendModal from "@/components/groups/GroupSendModal";
 import styles from "@/styles/groups.module.css";
 
 const GROUP_COLORS = [
@@ -37,6 +38,113 @@ function buildTree(groups: Group[]): Group[] {
     }
   });
   return roots;
+}
+
+/* ──────────────────────── 2단계 삭제 확인 모달 ──────────────────────── */
+function DeleteConfirmModal({
+  group,
+  hasChildren,
+  onClose,
+  onConfirm,
+}: {
+  group: Group;
+  hasChildren: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [inputValue, setInputValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (step === 2) setTimeout(() => inputRef.current?.focus(), 50);
+  }, [step]);
+
+  const memberCount = group.member_count ?? 0;
+
+  return createPortal(
+    <div className={styles.overlay} style={{ zIndex: 1200 }}>
+      <div className={styles.modal} style={{ maxWidth: 420 }}>
+        {step === 1 ? (
+          <>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle} style={{ color: "#ef4444" }}>
+                <AlertTriangle size={18} style={{ color: "#ef4444" }} />
+                그룹 삭제 — 1차 경고
+              </h2>
+              <button className={styles.modalCloseBtn} onClick={onClose}><X size={18} /></button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.deleteWarningBox}>
+                <p className={styles.deleteWarningTitle}>
+                  <strong>&ldquo;{group.name}&rdquo;</strong> 그룹을 삭제하려고 합니다.
+                </p>
+                <ul className={styles.deleteWarningList}>
+                  {hasChildren && (
+                    <li>모든 <strong>하위 그룹</strong>이 함께 삭제됩니다</li>
+                  )}
+                  {memberCount > 0 && (
+                    <li>그룹에 포함된 <strong>{memberCount}명의 멤버</strong>가 모두 해제됩니다</li>
+                  )}
+                  <li className={styles.deleteWarningCritical}>
+                    ⚠️ <strong>삭제 후 되돌릴 수 없습니다</strong>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div className={styles.modalFooter}>
+              <button onClick={onClose} className={styles.btnCancel}>취소</button>
+              <button
+                onClick={() => setStep(2)}
+                className={styles.btnDelete}
+              >
+                계속 진행
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle} style={{ color: "#ef4444" }}>
+                <AlertTriangle size={18} style={{ color: "#ef4444" }} />
+                그룹 삭제 — 2차 확인
+              </h2>
+              <button className={styles.modalCloseBtn} onClick={onClose}><X size={18} /></button>
+            </div>
+            <div className={styles.modalBody}>
+              <p className={styles.deleteConfirmDesc}>
+                삭제를 최종 확인하려면 아래에 그룹 이름을 정확히 입력하세요.
+              </p>
+              <p className={styles.deleteGroupNameHint}>
+                입력 필요: <strong>{group.name}</strong>
+              </p>
+              <input
+                ref={inputRef}
+                className={styles.formInput}
+                placeholder={group.name}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && inputValue === group.name) onConfirm();
+                }}
+              />
+            </div>
+            <div className={styles.modalFooter}>
+              <button onClick={onClose} className={styles.btnCancel}>취소</button>
+              <button
+                onClick={onConfirm}
+                disabled={inputValue !== group.name}
+                className={styles.btnDelete}
+              >
+                영구 삭제
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>,
+    document.body
+  );
 }
 
 /* ──────────────────────── 그룹 폼 모달 ──────────────────────── */
@@ -361,12 +469,24 @@ function MembersModal({
                           className={styles.candidateCheckbox}
                         />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p className={styles.memberName}>{c.name}</p>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <p className={styles.memberName}>{c.name}</p>
+                            {c.investment_tendency && (
+                              <span className={styles.genderBadge} data-gender={c.investment_tendency}>
+                                {c.investment_tendency === "male" ? "남" : c.investment_tendency === "female" ? "여" : c.investment_tendency === "business" ? "법인" : "기타"}
+                              </span>
+                            )}
+                          </div>
                           <p className={styles.memberPhone}>
                             {formatPhone(c.phone)}
                             {pType !== "mobile" && (
                               <span className={`${styles.phoneBadge} ${PHONE_TYPE_BADGE_CLASS[pType]}`}>
                                 {PHONE_TYPE_LABEL[pType]}
+                              </span>
+                            )}
+                            {c.created_at && (
+                              <span className={styles.joinDate}>
+                                가입 {c.created_at.slice(0, 10)}
                               </span>
                             )}
                           </p>
@@ -457,6 +577,7 @@ const PLAN_LIMITS: Record<string, number> = {
   starter: 5,
   pro: 20,
   enterprise: Infinity,
+  admin: Infinity,
 };
 
 /* ─────────────────── 트리 노드 (재귀) ─────────────────── */
@@ -471,6 +592,7 @@ function GroupTreeNode({
   onDelete,
   onAddChild,
   onMembers,
+  onSend,
   deletingId,
 }: {
   node: Group;
@@ -480,6 +602,7 @@ function GroupTreeNode({
   onDelete: (g: Group) => void;
   onAddChild: (g: Group) => void;
   onMembers: (g: Group) => void;
+  onSend: (g: Group) => void;
   deletingId: string | null;
 }) {
   const depth = node.depth ?? 0;
@@ -493,7 +616,10 @@ function GroupTreeNode({
       {/* 행 */}
       <div
         className={styles.treeRow}
-        style={{ paddingLeft: `${12 + depth * 28}px` }}
+        style={{
+          paddingLeft: `${12 + depth * 24}px`,
+          minHeight: depth === 0 ? "60px" : "48px",
+        }}
       >
         {/* 토글 버튼 */}
         <button
@@ -553,6 +679,14 @@ function GroupTreeNode({
             <span>멤버</span>
           </button>
           <button
+            className={`${styles.treeActionBtn} ${styles.treeActionSend}`}
+            onClick={() => onSend(node)}
+            title="그룹 발송"
+          >
+            <Send size={14} />
+            <span>발송</span>
+          </button>
+          <button
             className={`${styles.treeActionBtn} ${styles.treeActionEdit}`}
             onClick={() => onEdit(node)}
             title="수정"
@@ -583,6 +717,7 @@ function GroupTreeNode({
               onDelete={onDelete}
               onAddChild={onAddChild}
               onMembers={onMembers}
+              onSend={onSend}
               deletingId={deletingId}
             />
           ))}
@@ -610,6 +745,10 @@ export default function GroupsClient({
   const [addressBooks, setAddressBooks] = useState<AddressBook[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // 2단계 삭제 확인 모달
+  const [deleteTarget, setDeleteTarget] = useState<Group | null>(null);
+  // 그룹 발송 모달
+  const [sendGroup, setSendGroup] = useState<Group | null>(null);
 
   const [pending, startTransition] = useTransition();
 
@@ -617,8 +756,8 @@ export default function GroupsClient({
     dataStore.getAddressBooks().then(setAddressBooks);
   }, []);
 
-  const maxGroups = PLAN_LIMITS[plan] ?? 0;
-  const canAddMore = groups.length < maxGroups;
+  const maxGroups = PLAN_LIMITS[plan] ?? Infinity;
+  const canAddMore = maxGroups === Infinity || groups.length < maxGroups;
 
   const reload = useCallback(() => {
     startTransition(async () => {
@@ -638,11 +777,14 @@ export default function GroupsClient({
   };
 
   const handleDelete = (group: Group) => {
-    const hasChildren = groups.some((g) => g.parent_id === group.id);
-    const msg = hasChildren
-      ? `"${group.name}" 그룹과 모든 하위 그룹을 삭제할까요?\n하위 그룹의 멤버도 모두 해제됩니다.`
-      : `"${group.name}" 그룹을 삭제할까요?`;
-    if (!confirm(msg)) return;
+    // 2단계 삭제 확인 모달 열기
+    setDeleteTarget(group);
+  };
+
+  const executeDelete = useCallback(() => {
+    if (!deleteTarget) return;
+    const group = deleteTarget;
+    setDeleteTarget(null);
     setDeletingId(group.id);
     startTransition(async () => {
       const r = await deleteGroup(group.id);
@@ -653,7 +795,7 @@ export default function GroupsClient({
         reload();
       }
     });
-  };
+  }, [deleteTarget, reload]);
 
   const openAddRoot = () => {
     setEditGroup(null);
@@ -752,6 +894,7 @@ export default function GroupsClient({
               onDelete={handleDelete}
               onAddChild={openAddChild}
               onMembers={setMembersGroup}
+              onSend={setSendGroup}
               deletingId={deletingId}
             />
           ))}
@@ -774,6 +917,20 @@ export default function GroupsClient({
           onMembersChanged={reload}
           allGroups={groups}
           addressBooks={addressBooks}
+        />
+      )}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          group={deleteTarget}
+          hasChildren={groups.some((g) => g.parent_id === deleteTarget.id)}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={executeDelete}
+        />
+      )}
+      {sendGroup && (
+        <GroupSendModal
+          group={sendGroup}
+          onClose={() => setSendGroup(null)}
         />
       )}
     </div>

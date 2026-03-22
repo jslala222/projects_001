@@ -57,6 +57,49 @@ export type CustomerGroup = {
   group?: Group;
 };
 
+/** b-messenger_group_members 조인 테이블 */
+export type GroupMember = {
+  id: string;
+  tenant_id: string;
+  group_id: string;
+  contact_id: string;
+  added_at: string;
+  contact?: Customer;
+  group?: Group;
+};
+
+/** b-messenger_send_targets — 발송 대상 지정 */
+export type SendTarget = {
+  id: string;
+  tenant_id: string;
+  campaign_id: string;
+  /** 발송 대상 종류: 그룹 / 개인 연락처 / 필터 */
+  target_type: 'group' | 'contact' | 'filter';
+  group_id?: string | null;
+  contact_id?: string | null;
+  filter_json?: Record<string, unknown> | null;
+  estimated_count?: number;
+  created_at: string;
+};
+
+/** b-messenger_campaign_filters — 저장된 필터 조합 */
+export type CampaignFilter = {
+  id: string;
+  tenant_id: string;
+  name: string;
+  filter_json: {
+    groups?: string[];
+    tags?: string[];
+    gender?: string;
+    address_book_id?: string;
+    min_amount?: number;
+    max_amount?: number;
+    [key: string]: unknown;
+  };
+  created_at: string;
+  updated_at: string;
+};
+
 export type SubscriptionPlan = 'Free' | 'Pro' | 'Enterprise';
 
 export type UserProfile = {

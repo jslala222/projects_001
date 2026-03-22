@@ -96,17 +96,13 @@ export interface AddressBook {
 }
 
 // ── 테넌트 ID (Supabase Auth 기반) ──
-let TENANT_ID: string | null = null;
-
+// 전역 캐시 제거: 다중 계정 환경에서 이전 계정 ID가 캐시될 수 있어 항상 auth에서 조회
 async function getTenantId(): Promise<string> {
-  if (TENANT_ID) return TENANT_ID;
-
   // Supabase Auth에서 현재 로그인한 사용자 가져오기
   const { data: { user } } = await supabase.auth.getUser();
 
   if (user) {
-    TENANT_ID = user.id;
-    return TENANT_ID;
+    return user.id;
   }
 
   // 로그인하지 않은 경우 (개발/테스트용 폴백)
@@ -117,8 +113,7 @@ async function getTenantId(): Promise<string> {
     .single();
 
   if (existing) {
-    TENANT_ID = existing.id as string;
-    return TENANT_ID;
+    return existing.id as string;
   }
 
   // 테스트 사용자 생성
@@ -132,8 +127,7 @@ async function getTenantId(): Promise<string> {
     throw new Error("테넌트 사용자 생성 실패: " + error?.message);
   }
 
-  TENANT_ID = created.id as string;
-  return TENANT_ID;
+  return created.id as string;
 }
 
 // ── DB 데이터 → 프론트 타입 변환 헬퍼 ──
@@ -937,7 +931,3 @@ class DataStore {
 // 싱글톤 인스턴스 (전역에서 하나만 사용)
 export const dataStore = new DataStore();
 
-// 로그아웃 시 TENANT_ID 캐시 초기화
-export function resetTenantId() {
-  TENANT_ID = null;
-}

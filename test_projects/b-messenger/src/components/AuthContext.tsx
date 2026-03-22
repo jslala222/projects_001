@@ -7,7 +7,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import type { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { resetTenantId } from "@/lib/store";
 
 // 인증 상태 타입
 interface AuthContextType {
@@ -169,7 +168,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut();
-    resetTenantId();
     setUser(null);
     setSession(null);
     setIsAdmin(false);

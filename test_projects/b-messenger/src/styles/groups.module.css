@@ -702,6 +702,40 @@
   margin-left: 4px;
 }
 
+.genderBadge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.genderBadge[data-gender="male"] {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.genderBadge[data-gender="female"] {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+.genderBadge[data-gender="business"] {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.genderBadge[data-gender="other"] {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.joinDate {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-left: 6px;
+}
+
 /* ── 주소록 탭 (고객 추가 탭 내) ── */
 .bookTabs {
   display: flex;
@@ -853,13 +887,15 @@
 .treeRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  padding: 10px 14px;
+  padding: 10px 12px;
   min-height: 48px;
   transition: box-shadow 0.15s, background 0.15s;
+  overflow: hidden;        /* 버튼이 행 밖으로 튀어나오지 않도록 */
+  min-width: 0;            /* flex-child 축소 허용 */
 }
 
 .treeRow:hover {
@@ -917,6 +953,10 @@
   font-weight: 600;
   color: #1e293b;
   flex-shrink: 0;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .treeNodeDesc {
@@ -941,7 +981,7 @@
 .treeActions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   margin-left: auto;
   flex-shrink: 0;
 }
@@ -1003,6 +1043,15 @@
   background: #fecaca;
 }
 
+.treeActionSend {
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.treeActionSend:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
 /* GroupFormModal 부모 정보 표시 */
 .parentInfo {
   display: flex;
@@ -1037,5 +1086,102 @@
   background: #eef2ff;
   color: #6366f1;
   margin-left: 8px;
+}
+
+/* ── 삭제 버튼 (빨간 계열) ── */
+.btnDelete {
+  padding: 9px 24px;
+  background: #ef4444;
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+}
+
+.btnDelete:hover {
+  background: #dc2626;
+  box-shadow: 0 2px 8px rgba(239,68,68,0.35);
+}
+
+.btnDelete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: #ef4444;
+  box-shadow: none;
+}
+
+/* ── 2단계 삭제 확인 모달 내용 ── */
+.deleteWarningBox {
+  background: #fff1f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.deleteWarningTitle {
+  font-size: 15px;
+  color: #1e293b;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.deleteWarningList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.deleteWarningList li {
+  font-size: 13px;
+  color: #475569;
+  padding-left: 14px;
+  position: relative;
+}
+
+.deleteWarningList li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #ef4444;
+}
+
+.deleteWarningCritical {
+  color: #b91c1c !important;
+  font-size: 13px !important;
+  font-weight: 600;
+  padding-left: 0 !important;
+}
+
+.deleteWarningCritical::before {
+  display: none !important;
+}
+
+.deleteConfirmDesc {
+  font-size: 14px;
+  color: #475569;
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+.deleteGroupNameHint {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px dashed #cbd5e1;
+}
+
+.deleteGroupNameHint strong {
+  color: #1e293b;
+  font-weight: 700;
 }
 

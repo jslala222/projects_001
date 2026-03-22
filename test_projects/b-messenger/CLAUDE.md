@@ -12,9 +12,15 @@ npm run dev  # 자동으로 6600 포트 사용
 ## AI 개발 원칙 ⭐
 **모든 코드 추가/수정은 AI(Copilot/Claude)가 직접 진행한다.**
 - ✅ 코드 파일 생성/수정: AI가 직접 편집
-- ✅ SQL 마이그레이션: AI가 Supabase MCP(`project_ref: lajjbrrysvkaxzrchanp`)를 통해 직접 실행
+- ✅ SQL 마이그레이션: AI가 Supabase MCP(`project_ref: jsdqmsbqtgdacccqkrjm`)를 통해 직접 실행
 - ⚠️ MCP 연결 실패 시: AI가 SQL 스크립트를 제공하고 사용자에게 Supabase 대시보드 → SQL Editor 실행 요청
 - ❌ 사용자에게 코드 직접 작성 요청 금지
+
+## Bypass(즉시 구현) 원칙 ⭐
+**사용자가 "bypass", "진행", "바로 해" 등을 말하면 기획/질문 없이 즉시 코드 수정한다.**
+- 기획 분석(`/기획해`) 없이 곧바로 구현
+- 확인 질문 없이 가장 합리적인 방향으로 진행
+- 구현 후 변경 파일 목록과 무엇을 바꿨는지만 간략히 보고
 
 
 ## Supabase 테이블 네이밍 규칙 ⭐

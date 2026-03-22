@@ -1,0 +1,603 @@
+/* ================================================================
+   groupSend.module.css — GroupSendModal 전용 스타일
+   ================================================================ */
+
+/* ── 기본 오버레이 / 모달 ───────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1300;
+  padding: 16px;
+}
+
+.modal {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
+}
+
+/* ── 헤더 ────────────────────────────────────────────────────────── */
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.modalTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modalTitle {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  transition: all 0.15s;
+}
+.closeBtn:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* ── 스텝 인디케이터 ─────────────────────────────────────────────── */
+.stepIndicatorWrap {
+  padding: 16px 24px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  background: #f8fafc;
+}
+
+.stepRow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.stepItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stepCircle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.stepCircle.stepDone {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: #fff;
+}
+
+.stepCircle.stepActive {
+  border-color: #6366f1;
+  color: #6366f1;
+  background: #eef2ff;
+}
+
+.stepLabel {
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+.stepLabel.stepLabelActive {
+  color: #6366f1;
+  font-weight: 600;
+}
+
+.stepLine {
+  flex: 1;
+  height: 2px;
+  background: #e2e8f0;
+  margin: 0 8px;
+  min-width: 20px;
+}
+
+/* ── 바디 ─────────────────────────────────────────────────────────── */
+.modalBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  background: #ffffff;
+}
+
+.stepDesc {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 14px;
+}
+
+/* ── 채널 선택 그리드 (Step 1) ───────────────────────────────────── */
+.channelGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.channelCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px 18px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  min-height: 90px;
+}
+
+.channelCard:hover {
+  border-color: #6366f1;
+  background: #eef2ff;
+}
+
+.channelCard.channelCardSelected {
+  border-color: #6366f1;
+  background: #eef2ff;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+}
+
+.channelIcon {
+  font-size: 22px;
+}
+
+.channelLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.channelDesc {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* ── 메시지 작성 (Step 2) ───────────────────────────────────────── */
+.msgEditorLayout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+}
+
+@media (max-width: 560px) {
+  .msgEditorLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.msgEditorLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.templateInput {
+  width: 100%;
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #1e293b;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+.templateInput:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+}
+.templateInput::placeholder {
+  color: #94a3b8;
+}
+
+.varBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.varBtn {
+  padding: 4px 10px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+  color: #6366f1;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.varBtn:hover {
+  background: #e0e7ff;
+}
+
+.msgTextarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #1e293b;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.msgTextarea:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+}
+.msgTextarea::placeholder {
+  color: #94a3b8;
+}
+.msgTextarea.msgTextareaError {
+  border-color: #ef4444;
+}
+
+.msgLenError {
+  font-size: 12px;
+  color: #ef4444;
+  margin: 0;
+}
+
+.msgPreviewBox {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.msgPreviewLabel {
+  font-size: 12px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.msgBubble {
+  background: #eef2ff;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 13px;
+  color: #1e293b;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 80px;
+}
+
+.msgPreviewNote {
+  font-size: 11px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* ── 대상 확인 (Step 3) ─────────────────────────────────────────── */
+.loadingWrap,
+.errorWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.spinIcon {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.recipientSummary {
+  text-align: center;
+  padding: 16px 0 12px;
+}
+
+.recipientCount {
+  font-size: 44px;
+  font-weight: 700;
+  color: #6366f1;
+  line-height: 1;
+}
+
+.recipientLabel {
+  font-size: 13px;
+  color: #64748b;
+  margin: 6px 0 0;
+}
+
+.recipientSampleWrap {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 14px 0;
+}
+
+.recipientSampleTitle {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0 0 8px;
+  font-weight: 500;
+}
+
+.recipientList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recipientItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.recipientName {
+  font-weight: 500;
+  color: #1e293b;
+  min-width: 70px;
+}
+
+.recipientPhone {
+  color: #64748b;
+}
+
+.recipientMore {
+  font-size: 12px;
+  color: #94a3b8;
+  padding-top: 4px;
+}
+
+.sendSummaryBox {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.sendSummaryBox strong {
+  color: #1e293b;
+}
+
+.sendWarning {
+  color: #f59e0b;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* ── 발송 실행 & 결과 (Step 4) ───────────────────────────────────── */
+.sendConfirmWrap,
+.sendingWrap,
+.resultWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 0;
+  text-align: center;
+}
+
+.sendConfirmTitle,
+.sendingTitle,
+.resultTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.sendConfirmDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 24px;
+  text-align: left;
+}
+
+.sendConfirmDetails strong {
+  color: #1e293b;
+}
+
+.sendNowBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.sendNowBtn:hover {
+  opacity: 0.9;
+}
+.sendNowBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sendingDesc {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.resultStats {
+  display: flex;
+  gap: 32px;
+}
+
+.resultStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.resultStatNum {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.resultError {
+  font-size: 13px;
+  color: #ef4444;
+  margin: 0;
+}
+
+.resultCampaignId {
+  font-size: 11px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* ── 푸터 ─────────────────────────────────────────────────────────── */
+.modalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+.btnCancel,
+.btnPrev {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btnCancel:hover,
+.btnPrev:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.btnNext {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 20px;
+  background: #6366f1;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: auto;
+  transition: opacity 0.15s;
+}
+.btnNext:hover {
+  opacity: 0.85;
+}
+.btnNext:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btnClose {
+  padding: 8px 24px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  margin: 0 auto;
+  transition: all 0.15s;
+}
+.btnClose:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}

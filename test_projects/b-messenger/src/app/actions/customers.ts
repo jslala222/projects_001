@@ -57,7 +57,7 @@ export async function getCustomers(options?: {
     phone: c.phone,
     email: c.email ?? null,
     birth_date: c.birthdate ?? null,
-    investment_tendency: null,
+    investment_tendency: (c.gender as "male" | "female" | "business" | "other") ?? null,
     status: "active" as const,
     tags: (c.interests as string[]) ?? [],
     memo: c.memo ?? null,
