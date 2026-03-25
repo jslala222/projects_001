@@ -16,6 +16,7 @@ const mainMenus = [
   { href: "/customers", icon: "💎", label: "고객 관리", freeBlocked: true },
   { href: "/groups", icon: "👥", label: "그룹 관리", freeBlocked: true },
   { href: "/messages", icon: "✉️", label: "메시지 작성" },
+  { href: "/scheduled", icon: "📅", label: "예약 발송" },
   { href: "/campaigns", icon: "📋", label: "발송 이력" },
 ];
 
@@ -31,7 +32,13 @@ const adminMenus = [
   { href: "/admin/subscriptions", icon: "💳", label: "구독 관리" },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({
+  isOpen,
+  onClose,
+}: {
+  isOpen?: boolean;
+  onClose?: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAdmin, plan, signOut } = useAuth();
@@ -77,7 +84,15 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside className={styles.sidebar}>
+      <aside
+        className={styles.sidebar}
+        style={{ transform: isOpen ? "translateX(0)" : "" }}
+      >
+        {/* 모바일 닫기 버튼 */}
+        <button className={styles.closeBtn} onClick={onClose} aria-label="메뉴 닫기">
+          ✕
+        </button>
+
         {/* 로고 영역 */}
         <div className={styles.logo}>
           <div className={styles.logoIcon}>📱</div>

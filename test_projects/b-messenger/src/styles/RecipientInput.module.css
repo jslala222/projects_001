@@ -1,0 +1,482 @@
+/* ================================================================
+   RecipientInput.module.css — 수신자 입력 컴포넌트 스타일
+   ================================================================ */
+
+/* ── 컨테이너 ── */
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── 도구 버튼 줄 ── */
+.toolbar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── 태그 입력 박스 ── */
+.inputBox {
+  min-height: 88px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  background: var(--input-bg, rgba(255,255,255,0.05));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-content: flex-start;
+  cursor: text;
+  transition: border-color 150ms;
+}
+
+.inputBox:focus-within {
+  border-color: #6366f1;
+}
+
+.inputBox.hasError {
+  border-color: rgba(248, 113, 113, 0.5);
+}
+
+/* ── 개별 태그(chip) ── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #c7d2fe;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.chipValid {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #c7d2fe;
+}
+
+.chipInvalid {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fca5a5;
+}
+
+.chipText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.chipRemove {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: opacity 150ms;
+}
+
+.chipRemove:hover {
+  opacity: 1;
+}
+
+/* ── 텍스트 입력 (inline) ── */
+.textInput {
+  flex: 1;
+  min-width: 160px;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary, #f1f5f9);
+  font-size: 13px;
+  padding: 3px 4px;
+}
+
+.textInput::placeholder {
+  color: var(--text-muted, #64748b);
+  font-size: 12px;
+}
+
+/* ── 힌트 / 카운트 줄 ── */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.errorCount {
+  color: #f87171;
+  font-weight: 600;
+}
+
+/* ── 고객 DB 선택 모달 ── */
+.dbModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 16px;
+}
+
+.dbModal {
+  background: var(--surface, #1e293b);
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dbModalTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.dbSearch {
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  background: var(--input-bg, rgba(255,255,255,0.05));
+  color: var(--text-primary, #f1f5f9);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.dbSearch:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+.dbList {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--border, rgba(255,255,255,0.08));
+  border-radius: 8px;
+}
+
+.dbItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.dbItem:last-child {
+  border-bottom: none;
+}
+
+.dbItem:hover {
+  background: rgba(99,102,241,0.1);
+}
+
+.dbItem.selected {
+  background: rgba(99,102,241,0.18);
+}
+
+.dbItemCheck {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 2px solid rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 10px;
+  background: transparent;
+  transition: all 120ms;
+}
+
+.dbItem.selected .dbItemCheck {
+  border-color: #6366f1;
+  background: #6366f1;
+  color: #fff;
+}
+
+.dbItemName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.dbItemPhone {
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
+  margin-left: auto;
+}
+
+.dbEmpty {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-muted, #94a3b8);
+  font-size: 13px;
+}
+
+.dbModalFooter {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ── 탭 ── */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,0.08));
+  margin-bottom: 10px;
+  gap: 0;
+}
+
+.tab {
+  flex: 1;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted, #94a3b8);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: var(--text-primary, #f1f5f9);
+}
+
+.tabActive {
+  color: #a5b4fc;
+  border-bottom-color: #6366f1;
+}
+
+/* ── 그룹 행 ── */
+.groupRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.groupRow:hover {
+  background: rgba(99,102,241,0.08);
+}
+
+.groupRowExpanded {
+  background: rgba(99,102,241,0.12);
+}
+
+.groupDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.groupName {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.groupCount {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  background: rgba(255,255,255,0.06);
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.groupArrow {
+  font-size: 9px;
+  color: var(--text-muted, #94a3b8);
+}
+
+/* ── 멤버 목록 ── */
+.memberList {
+  background: rgba(0,0,0,0.15);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.memberItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: background 100ms;
+}
+
+.memberItem:hover {
+  background: rgba(99,102,241,0.1);
+}
+
+.memberItem.selected {
+  background: rgba(99,102,241,0.16);
+}
+
+.memberSelectAll {
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 9px 20px;
+}
+
+/* ── 체크박스 활성 ── */
+.dbItemCheckActive {
+  border-color: #6366f1 !important;
+  background: #6366f1 !important;
+  color: #fff !important;
+}
+
+/* ── 하단 선택 카운트 ── */
+.selectionCount {
+  font-size: 12px;
+  color: #a5b4fc;
+  font-weight: 600;
+  align-self: center;
+}
+
+/* ================================================================
+   그룹 트리 아코디언 (최상/대/중/소)
+   ================================================================ */
+
+/* 트리 노드 래퍼 */
+.treeNodeWrap {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.treeNodeWrap:last-child {
+  border-bottom: none;
+}
+
+/* 그룹 행 — 왼쪽 정렬 고정 패딩 (depth 무관) */
+.treeGroupRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 10px 12px;
+  cursor: pointer;
+  transition: background 120ms;
+  user-select: none;
+}
+
+.treeGroupRow:hover {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.treeGroupRowExpanded {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+/* 토글 화살표 */
+.treeToggle {
+  font-size: 9px;
+  color: #64748b;
+  width: 12px;
+  flex-shrink: 0;
+  transition: transform 150ms;
+}
+
+.treeToggleOpen {
+  color: #a5b4fc;
+}
+
+/* 컬러 닷 */
+.treeColorDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* depth 뱃지 (최상/대/중/소) */
+.treeDepthBadge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+/* 그룹 이름 */
+.treeGroupName {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 멤버 수 뱃지 */
+.treeCountBadge {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  background: rgba(255,255,255,0.06);
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* 자식 컨테이너 — margin-left로 계단 형성 + border-left 컬러는 JS에서 depth별 덮어씀 */
+.treeChildren {
+  border-top: 1px solid rgba(255,255,255,0.04);
+  border-left: 3px solid rgba(99,102,241,0.25);
+  margin-left: 20px;
+}
+
+/* 멤버 섹션 — padding 없음 (memberItem이 자체 처리) */
+.treeMemberSection {
+  padding-left: 0;
+}
+
+/* 트리 내부 멤버 행은 패딩을 14px로 재정의 (일반 목록의 20px 아님) */
+.treeMemberSection .memberItem {
+  padding: 7px 14px;
+}
+
+.treeMemberSection .memberSelectAll {
+  padding: 8px 14px;
+}
+
+/* 로딩/빈 상태 텍스트 */
+.treeLoadingRow {
+  padding: 10px 16px;
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+  font-style: italic;
+}

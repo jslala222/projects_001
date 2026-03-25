@@ -6,9 +6,16 @@
 import Link from "next/link";
 import styles from "@/styles/Header.module.css";
 
-export default function Header() {
+export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   return (
     <header className={styles.header}>
+      {/* 햄버거 버튼 — 태블릿/모바일 전용 */}
+      <button className={styles.hamburger} onClick={onMenuClick} aria-label="메뉴 열기">
+        <span className={styles.hamburgerLine} />
+        <span className={styles.hamburgerLine} />
+        <span className={styles.hamburgerLine} />
+      </button>
+
       {/* 검색 바 */}
       <div className={styles.searchBar}>
         <span className={styles.searchIcon}>🔍</span>

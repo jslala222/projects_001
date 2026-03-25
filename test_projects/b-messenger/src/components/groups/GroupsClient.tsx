@@ -1001,6 +1001,8 @@ export default function GroupsClient({
         </div>
       ) : (
         <div className={styles.treeContainer}>
+          {/* 모바일: panelLeft를 wrapper로 감싸서 오른쪽 페이드 인디케이터 표시 */}
+          <div className={styles.mobileTabsWrap}>
           {/* 좌측 패널: 최상위 그룹 선택 목록 */}
           <div className={styles.panelLeft}>
             <div className={styles.panelLeftTitle}>최상위 그룹 ({treeRoots.length})</div>
@@ -1029,6 +1031,7 @@ export default function GroupsClient({
               최상위 추가
             </button>
           </div>
+          </div>{/* /mobileTabsWrap */}
 
           {/* 우측 패널: 선택된 최상위 그룹의 트리 */}
           <div className={styles.panelRight}>

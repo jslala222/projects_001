@@ -1547,3 +1547,292 @@
   background: var(--bg-glass);
 }
 
+/* ══════════════════════════════════════════════
+   모바일 하단 교정 탭 버ʰ (PC대 파널 도 scroll 어마로
+══════════════════════════════════════════════ */
+
+/* (groups 전용 fixed 하단바 제거 — 글로벌 네비는 globals.css 참고) */
+
+/* ── 태블릿 (769px ~ 1024px) ── */
+@media (max-width: 1024px) {
+  .panelLeft {
+    width: 175px;
+  }
+  .treeNodeName {
+    max-width: 110px;
+  }
+  .treeActionBtn span {
+    display: none; /* 버튼 텍스트 숨김, 아이콘만 */
+  }
+  .treeActionBtn {
+    padding: 5px 7px;
+  }
+  .treeNodeDepth1 {
+    margin-left: 24px;
+  }
+  .treeNodeDepth2 {
+    margin-left: 48px;
+  }
+  .treeNodeDepth3 {
+    margin-left: 72px;
+  }
+}
+
+/* ── 모바일 (스마트폰, ~768px) ── */
+@media (max-width: 768px) {
+  /* 헤더 */
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .headerTitle {
+    font-size: 20px;
+  }
+  .headerRight {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .addBtn {
+    font-size: 13px;
+    padding: 8px 14px;  /* 모바일에서 작게 유지 (숨기지 않음) */
+  }
+
+  /* 첫 방문 배너 */
+  .firstVisitBanner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12.5px;
+    padding: 10px 12px;
+  }
+
+  /* 깊이 범례 */
+  .depthLegend {
+    gap: 10px;
+    padding: 6px 10px;
+  }
+  .depthLegendItem {
+    font-size: 11px;
+  }
+
+  /* 2단 패널 → 모바일: 좌측 패널을 상단 가로 스크롤 탭으로 전환 */
+  .treeContainer {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* 탭 스크롤 wrapper — 세로 모바일: 가로 스크롤 대신 줄바꿈으로 전부 표시 */
+  .mobileTabsWrap {
+    position: relative;
+    width: 100%;
+  }
+  /* 페이드 제거 — 줄바꿈이므로 필요 없음 */
+  .mobileTabsWrap::after {
+    display: none;
+  }
+
+  .panelLeft {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;          /* ★ 줄바꿈 — 모든 탭 표시 */
+    overflow-x: visible;
+    scrollbar-width: none;
+    padding: 6px 8px 8px;
+    gap: 6px;
+    position: static;
+    border-radius: 10px;
+    align-items: center;
+  }
+  .panelLeft::-webkit-scrollbar { display: none; }
+  .panelLeftTitle {
+    display: none;
+  }
+  .panelItem {
+    flex-shrink: 0;
+    width: auto;           /* ★ width:100% 오버라이드 — 탭 너비를 내용에 맞게 */
+    min-width: max-content;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border-width: 1.5px;
+  }
+  /* 모바일 활성 탭: 하단 보더 대신 채워진 배경으로 */
+  .panelItemActive {
+    background: #667eea !important;
+    border-color: #667eea !important;
+  }
+  .panelItemActive .panelItemName {
+    color: #ffffff !important;
+  }
+  .panelItemActive .panelItemDot {
+    opacity: 0.8;
+  }
+  .panelItemCount {
+    display: none;
+  }
+  .panelAddRootBtn {
+    flex-shrink: 0;
+    width: auto;
+    margin-top: 0;
+    border-radius: 20px;
+    padding: 6px 12px;
+    white-space: nowrap;
+  }
+  .panelRight {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* 트리 노드 조정 */
+  .treeNodeWrapRoot {
+    margin-bottom: 8px;
+  }
+  .treeRow {
+    padding-right: 8px;
+  }
+  .treeNodeName {
+    max-width: 90px;
+    font-size: 13px;
+  }
+  .treeNodeDepth1 {
+    margin-left: 16px;
+  }
+  .treeNodeDepth2 {
+    margin-left: 32px;
+  }
+  .treeNodeDepth3 {
+    margin-left: 48px;
+  }
+  .treeActions {
+    gap: 2px;
+  }
+  .treeActionBtn span {
+    display: none;
+  }
+  .treeActionBtn {
+    padding: 4px 6px;
+  }
+  .treeMemberCount {
+    font-size: 11px;
+    padding: 2px 5px;
+  }
+
+  /* 모달 */
+  .modal {
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: 20px 20px 0 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+  .overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  /* 모바일 하단 탭바 표시 */
+  .mobileBottomBar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.10);
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 0 4px;
+    align-items: stretch;
+    min-height: 64px;
+  }
+  .mobileBottomBar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 모바일 하단 탭바 항목 */
+.mobileTabItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 12px;
+  min-width: 64px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+  border-top: 2.5px solid transparent;
+  font-family: inherit;
+}
+
+.mobileTabItem:hover {
+  background: #f8fafc;
+}
+
+.mobileTabItemActive {
+  border-top-color: #6366f1 !important;
+  background: #eef2ff;
+}
+
+.mobileTabDot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mobileTabName {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #475569;
+  max-width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.mobileTabItemActive .mobileTabName {
+  color: #4338ca;
+}
+
+.mobileTabAdd {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  min-width: 52px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: #94a3b8;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+
+.mobileTabAdd:hover {
+  color: #6366f1;
+}
+
+.mobileTabAdd:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.mobileTabAddLabel {
+  font-size: 9.5px;
+  font-weight: 600;
+  margin-top: 3px;
+  color: inherit;
+}
+

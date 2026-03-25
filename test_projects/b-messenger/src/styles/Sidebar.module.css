@@ -14,6 +14,7 @@
   flex-direction: column;
   z-index: 100;
   backdrop-filter: blur(20px);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .logo {
@@ -49,6 +50,47 @@
   font-size: 10px;
   color: var(--text-muted);
   font-weight: 400;
+}
+
+/* 모바일 닫기 버튼 — 태블릿/모바일에서만 표시 */
+.closeBtn {
+  display: none;
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--bg-glass-hover);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  z-index: 1;
+}
+
+.closeBtn:hover {
+  background: var(--error-bg);
+  color: var(--error);
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+/* 태블릿 + 모바일: 사이드바 숨김 → 햄버거로 열기 */
+@media (max-width: 1024px) {
+  .sidebar {
+    transform: translateX(-100%);
+    z-index: 200;
+  }
+  /* 복합 선택자로 특이성 상승 (0-2-0 vs 0-1-0) */
+  .sidebar.sidebarOpen {
+    transform: translateX(0);
+  }
+  .closeBtn {
+    display: flex;
+  }
 }
 
 .nav {
