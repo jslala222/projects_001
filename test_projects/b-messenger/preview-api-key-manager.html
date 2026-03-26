@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B-Messenger API 키 관리 도구 (미리보기)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0f172a;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .container {
+    width: 100%;
+    max-width: 540px;
+  }
+  .logo {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .logo-icon {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+  .logo h1 { font-size: 22px; font-weight: 700; }
+  .logo p { font-size: 13px; color: #64748b; margin-top: 4px; }
+
+  .card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tab-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    background: #0f172a;
+    padding: 4px;
+    border-radius: 10px;
+  }
+  .tab {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+    background: transparent;
+    color: #64748b;
+  }
+  .tab.active {
+    background: #6366f1;
+    color: #fff;
+  }
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-bottom: 6px;
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .input-wrap { position: relative; }
+  .input {
+    width: 100%;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 10px 44px 10px 14px;
+    color: #e2e8f0;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input:focus { border-color: #6366f1; }
+  .input::placeholder { color: #475569; font-family: inherit; }
+  .eye-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+  }
+  .eye-btn:hover { color: #94a3b8; }
+  .target-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 20px;
+  }
+  .target-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .btn {
+    width: 100%;
+    padding: 13px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 700;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(99,102,241,0.4);
+  }
+  .btn-test {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    font-size: 13px;
+    padding: 9px;
+    border-radius: 10px;
+    width: auto;
+    margin-top: 8px;
+  }
+  .btn-test:hover { border-color: #6366f1; color: #6366f1; }
+  .flow-card {
+    background: #0f172a;
+    border: 1px dashed #334155;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .flow-title { font-size: 12px; color: #64748b; margin-bottom: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .flow-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: #94a3b8;
+  }
+  .flow-step:last-child { margin-bottom: 0; }
+  .step-num {
+    width: 24px; height: 24px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #6366f1;
+    flex-shrink: 0;
+  }
+  .flow-arrow { color: #334155; font-size: 18px; margin: 2px 0 2px 11px; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .badge-purple { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.3); }
+  .badge-green { background: rgba(34,197,94,0.1); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
+  .badge-yellow { background: rgba(251,191,36,0.1); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+
+  /* 성공 애니메이션 오버레이 */
+  .success-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .success-overlay.show { display: flex; }
+  .success-box {
+    background: #1e293b;
+    border: 1px solid #22c55e;
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    max-width: 380px;
+    animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes popIn {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .success-icon { font-size: 56px; margin-bottom: 16px; }
+  .success-title { font-size: 20px; font-weight: 800; color: #4ade80; margin-bottom: 8px; }
+  .success-desc { font-size: 13px; color: #64748b; line-height: 1.6; }
+  .progress-bar {
+    width: 100%;
+    height: 4px;
+    background: #334155;
+    border-radius: 4px;
+    margin-top: 20px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6366f1, #22c55e);
+    border-radius: 4px;
+    animation: progress 3s ease forwards;
+  }
+  @keyframes progress {
+    from { width: 0%; }
+    to { width: 100%; }
+  }
+  .step-indicator {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+    text-align: left;
+  }
+  .step-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: #64748b;
+    animation: fadeInStep 0.3s ease both;
+  }
+  .step-line:nth-child(1) { animation-delay: 0.2s; }
+  .step-line:nth-child(2) { animation-delay: 0.8s; }
+  .step-line:nth-child(3) { animation-delay: 1.4s; }
+  .step-line:nth-child(4) { animation-delay: 2.0s; }
+  @keyframes fadeInStep {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .check { color: #4ade80; }
+
+  .notice {
+    background: rgba(251,191,36,0.08);
+    border: 1px solid rgba(251,191,36,0.2);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: #fbbf24;
+    line-height: 1.6;
+  }
+  .sep { color: #334155; margin: 0 4px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="logo">
+    <div class="logo-icon">🔑</div>
+    <h1>B-Messenger API 키 관리</h1>
+    <p>이 도구는 사용자 PC에서만 실행됩니다 — 키가 외부로 전송되지 않습니다</p>
+  </div>
+
+  <!-- 연결 대상 표시 -->
+  <div class="target-row">
+    <div class="target-dot"></div>
+    <span>연결 대상:</span>
+    <strong style="color:#e2e8f0">B-Messenger</strong>
+    <span class="sep">|</span>
+    <span class="badge badge-green">● 실행 중</span>
+    <span style="margin-left:auto; font-size:12px">localhost:6600</span>
+  </div>
+
+  <!-- 본인 계정 -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">B-Messenger 로그인 이메일</label>
+      <div class="input-wrap">
+        <input class="input" type="text" value="slala222@gmail.com" id="email" placeholder="your@email.com" />
+      </div>
+    </div>
+  </div>
+
+  <!-- 벤더 탭 선택 -->
+  <div class="card">
+    <div class="card-title">📡 발송 API 벤더 선택</div>
+
+    <div class="tab-row">
+      <button class="tab active" onclick="switchTab('solapi', this)">솔라피 (Solapi)</button>
+      <button class="tab" onclick="switchTab('aligo', this)">알리고 (Aligo)</button>
+    </div>
+
+    <!-- 솔라피 폼 -->
+    <div id="form-solapi">
+      <div class="form-group">
+        <label class="form-label">API Key</label>
+        <div class="input-wrap">
+          <input class="input" type="password" id="solapi-key" placeholder="NCSIYJUZ..." value="NCSIYJUZ••••••••" />
+          <button class="eye-btn" onclick="togglePw('solapi-key', this)">👁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">API Secret</label>
+        <div class="input-wrap">
+          <input class="input" type="password" id="solapi-secret" placeholder="PQYWGKXJ..." value="PQYWGKXJ••••••••••••••••" />
+          <button class="eye-btn" onclick="togglePw('solapi-secret', this)">👁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">발신번호</label>
+        <input class="input" type="text" placeholder="010-0000-0000" />
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">카카오 채널 ID (알림톡 사용 시)</label>
+        <input class="input" type="text" placeholder="@your_channel (선택사항)" />
+      </div>
+    </div>
+
+    <!-- 알리고 폼 (숨김) -->
+    <div id="form-aligo" style="display:none">
+      <div class="form-group">
+        <label class="form-label">알리고 API Key</label>
+        <div class="input-wrap">
+          <input class="input" type="password" placeholder="알리고 발급 API Key" />
+          <button class="eye-btn">👁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">알리고 계정 ID (userid)</label>
+        <input class="input" type="text" placeholder="aligo 로그인 아이디" />
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">발신번호</label>
+        <input class="input" type="text" placeholder="010-0000-0000" />
+      </div>
+    </div>
+
+    <div style="margin-top:16px">
+      <button class="btn btn-test" onclick="runTest()">🔌 연결 테스트 먼저 해보기</button>
+    </div>
+  </div>
+
+  <!-- 동작 흐름 설명 -->
+  <div class="flow-card">
+    <div class="flow-title">⚙️ 이 도구가 하는 일</div>
+    <div class="flow-step"><div class="step-num">1</div>입력한 API 키를 AES-256으로 암호화</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step"><div class="step-num">2</div>암호화된 키를 B-Messenger 서버로 전송</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step"><div class="step-num">3</div>해당 계정의 DB에 안전하게 저장</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step"><div class="step-num">4</div>B-Messenger에서 발송 시 자동으로 사용</div>
+  </div>
+
+  <div class="notice" style="margin-bottom:16px">
+    ⚠️ 이 HTML 파일은 <strong>로컬 PC에서만</strong> 실행하세요.<br>
+    B-Messenger가 <strong>localhost:6600</strong>에서 실행 중이어야 저장됩니다.
+  </div>
+
+  <!-- 저장 버튼 -->
+  <button class="btn btn-primary" onclick="saveKeys()">
+    🔐 암호화 후 B-Messenger에 저장
+  </button>
+</div>
+
+<!-- 성공 오버레이 -->
+<div class="success-overlay" id="successOverlay" onclick="closeSuccess()">
+  <div class="success-box">
+    <div class="success-icon">🔐</div>
+    <div class="success-title">저장 완료!</div>
+    <div class="success-desc">API 키가 암호화되어 B-Messenger에 주입되었습니다.<br>이제 실제 발송이 가능합니다.</div>
+
+    <div class="step-indicator">
+      <div class="step-line"><span class="check">✓</span> API 키 AES-256 암호화 완료</div>
+      <div class="step-line"><span class="check">✓</span> B-Messenger 서버 연결 확인</div>
+      <div class="step-line"><span class="check">✓</span> 계정 DB에 안전하게 저장</div>
+      <div class="step-line"><span class="check">✓</span> 발송 활성화 완료 — Mock 모드 해제</div>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-fill"></div>
+    </div>
+    <div style="margin-top:12px; font-size:11px; color:#475569">클릭하면 닫힙니다</div>
+  </div>
+</div>
+
+<script>
+  function switchTab(vendor, btn) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('form-solapi').style.display = vendor === 'solapi' ? 'block' : 'none';
+    document.getElementById('form-aligo').style.display = vendor === 'aligo' ? 'block' : 'none';
+  }
+
+  function togglePw(id, btn) {
+    const input = document.getElementById(id);
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    btn.textContent = isHidden ? '🙈' : '👁';
+  }
+
+  async function runTest() {
+    const btn = event.target;
+    const activeVendor = document.querySelector('.tab.active').textContent.includes('솔라피') ? 'solapi' : 'aligo';
+
+    let apiKey = '', apiSecret = '';
+    if (activeVendor === 'solapi') {
+      apiKey = document.getElementById('solapi-key').value;
+      apiSecret = document.getElementById('solapi-secret').value;
+    } else {
+      apiKey = document.getElementById('aligo-key')?.value || '';
+      apiSecret = document.getElementById('aligo-secret')?.value || '';
+    }
+
+    if (!apiKey || !apiSecret) {
+      btn.textContent = '❌ API 키와 Secret을 입력하세요';
+      btn.style.color = '#f87171';
+      setTimeout(() => { btn.textContent = '🔌 연결 테스트 먼저 해보기'; btn.style.color = ''; }, 2500);
+      return;
+    }
+
+    btn.textContent = '⏳ 연결 테스트 중...';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('http://localhost:6600/api/solapi/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey, apiSecret }),
+      });
+      const data = await res.json();
+
+      if (data.success && !data.mock) {
+        btn.textContent = `✅ ${data.message}`;
+        btn.style.color = '#4ade80';
+        btn.style.borderColor = 'rgba(74,222,128,0.4)';
+        btn.style.whiteSpace = 'normal';
+      } else if (data.mock) {
+        btn.textContent = '⚠️ Mock 모드 — B-Messenger 서버가 API 키를 인식 못함';
+        btn.style.color = '#fbbf24';
+        btn.style.borderColor = 'rgba(251,191,36,0.4)';
+      } else {
+        btn.textContent = `❌ ${data.message}`;
+        btn.style.color = '#f87171';
+        btn.style.borderColor = 'rgba(248,113,113,0.4)';
+      }
+    } catch (err) {
+      btn.textContent = '❌ 연결 실패 — B-Messenger(localhost:6600)가 실행 중인지 확인하세요';
+      btn.style.color = '#f87171';
+      btn.style.borderColor = 'rgba(248,113,113,0.4)';
+    }
+
+    btn.disabled = false;
+    setTimeout(() => {
+      btn.textContent = '🔌 연결 테스트 먼저 해보기';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+      btn.style.whiteSpace = '';
+    }, 5000);
+  }
+
+  function saveKeys() {
+    const overlay = document.getElementById('successOverlay');
+    overlay.classList.add('show');
+  }
+
+  function closeSuccess() {
+    document.getElementById('successOverlay').classList.remove('show');
+  }
+</script>
+</body>
+</html>

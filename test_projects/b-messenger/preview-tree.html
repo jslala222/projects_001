@@ -1,396 +1,149 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>그룹 트리 레이아웃 미리보기 3종</title>
+<title>수신자 선택 - 트리 미리보기 3종</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: #0f172a;
-    color: #f1f5f9;
-    font-family: 'Segoe UI', sans-serif;
-    padding: 32px 24px;
-    display: flex;
-    gap: 28px;
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-  .preview-box {
-    background: #1e293b;
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 16px;
-    width: 360px;
-    overflow: hidden;
-    flex-shrink: 0;
-  }
-  .preview-title {
-    padding: 16px 18px 12px;
-    font-size: 15px;
-    font-weight: 700;
-    color: #a5b4fc;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .preview-title span.badge {
-    background: #6366f1;
-    color: white;
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 20px;
-    font-weight: 600;
-  }
-  .list { overflow-y: auto; max-height: 520px; }
-
-  /* ── 공통 depth 뱃지 ── */
-  .badge-max  { background: rgba(129,140,248,.18); color:#818cf8; border:1px solid rgba(129,140,248,.4); font-size:10px; font-weight:700; padding:1px 6px; border-radius:5px; }
-  .badge-d    { background: rgba(52,211,153,.18); color:#34d399; border:1px solid rgba(52,211,153,.4); font-size:10px; font-weight:700; padding:1px 6px; border-radius:5px; }
-  .badge-m    { background: rgba(251,191,36,.18); color:#fbbf24; border:1px solid rgba(251,191,36,.4); font-size:10px; font-weight:700; padding:1px 6px; border-radius:5px; }
-  .badge-s    { background: rgba(248,113,113,.18); color:#f87171; border:1px solid rgba(248,113,113,.4); font-size:10px; font-weight:700; padding:1px 6px; border-radius:5px; }
-  .dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; display:inline-block; }
-  .cnt { font-size:11px; color:#64748b; background:rgba(255,255,255,.06); padding:2px 7px; border-radius:10px; white-space:nowrap; }
-  .arrow { font-size:9px; color:#64748b; }
-  .member-row { display:flex; align-items:center; gap:10px; padding:7px 14px; border-bottom:1px solid rgba(255,255,255,.04); }
-  .member-row:hover { background:rgba(99,102,241,.08); cursor:pointer; }
-  .chk { width:15px; height:15px; border-radius:4px; border:2px solid rgba(255,255,255,.2); display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0; }
-  .name { font-size:12px; font-weight:500; }
-  .phone { font-size:11px; color:#64748b; margin-left:auto; }
-  .sel-all { display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;background:rgba(0,0,0,.15); }
-  .sel-all span { font-size:11px; font-weight:600; color:#a5b4fc; }
-
-  /* ════════════════════════════════
-     안 A: 들여쓰기 계단식 (paddingLeft)
-     ════════════════════════════════ */
-  .a-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    border-bottom: 1px solid rgba(255,255,255,.05);
-    cursor: pointer;
-    transition: background 120ms;
-  }
-  .a-row:hover { background: rgba(99,102,241,.08); }
-  .a-row.open  { background: rgba(99,102,241,.13); }
-  .a-name { flex:1; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-
-  /* ════════════════════════════════
-     안 B: border-left 연결선
-     ════════════════════════════════ */
-  .b-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px 10px 12px;
-    border-bottom: 1px solid rgba(255,255,255,.05);
-    cursor: pointer;
-    transition: background 120ms;
-  }
-  .b-row:hover { background: rgba(99,102,241,.08); }
-  .b-row.open  { background: rgba(99,102,241,.13); }
-  .b-children {
-    border-left: 2px solid rgba(99,102,241,.3);
-    margin-left: 20px;
-  }
-  .b-name { flex:1; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-
-  /* ════════════════════════════════
-     안 C: 들여쓰기 + 연결선 혼합
-     ════════════════════════════════ */
-  .c-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-bottom: 1px solid rgba(255,255,255,.05);
-    cursor: pointer;
-    transition: background 120ms;
-    padding-top: 10px;
-    padding-bottom: 10px;
-    padding-right: 14px;
-  }
-  .c-row:hover { background: rgba(99,102,241,.08); }
-  .c-row.open  { background: rgba(99,102,241,.13); }
-  .c-children { border-top: 1px solid rgba(255,255,255,.04); }
-  .c-name { flex:1; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0f0f1a; color: #e2e8f0; font-family: Segoe UI, sans-serif; padding: 30px; }
+h1 { color: #a78bfa; font-size: 22px; margin-bottom: 8px; }
+.subtitle { color: #64748b; font-size: 13px; margin-bottom: 36px; }
+.previews { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+.preview-box { background: #1a1a2e; border: 1px solid #2d2d4e; border-radius: 12px; width: 340px; overflow: hidden; }
+.preview-title { background: #252540; padding: 12px 16px; font-size: 13px; font-weight: 700; color: #a78bfa; border-bottom: 1px solid #2d2d4e; }
+.pbadge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 10px; margin-left: 6px; font-weight: 600; }
+.pb-a { background: #1e3a5f; color: #60a5fa; }
+.pb-b { background: #1e3a2f; color: #34d399; }
+.pb-c { background: #3a1e3a; color: #c084fc; }
+.tree-area { max-height: 480px; overflow-y: auto; }
+/* 공통 */
+.db { font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 700; flex-shrink: 0; }
+.db0 { background: #2d1b69; color: #a78bfa; }
+.db1 { background: #14532d; color: #4ade80; }
+.db2 { background: #713f12; color: #fbbf24; }
+.db3 { background: #7f1d1d; color: #f87171; }
+.cdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.cnt { font-size: 11px; color: #64748b; background: #1e293b; padding: 1px 7px; border-radius: 10px; white-space: nowrap; }
+.tog { font-size: 9px; color: #64748b; width: 12px; flex-shrink: 0; }
+.gn { font-size: 13px; flex: 1; }
+.dv { height: 1px; background: #252540; }
+.ck { width: 14px; height: 14px; border: 2px solid #334155; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; flex-shrink: 0; }
+.ck.on { background: #6366f1; border-color: #6366f1; color: white; }
+/* 안 A: 순수 계단 */
+.ar { display: flex; align-items: center; gap: 6px; padding: 9px 12px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.12s; }
+.ar:hover { background: #1e1e40; }
+.ad0 { padding-left: 12px; }
+.ad1 { padding-left: 28px; }
+.ad2 { padding-left: 44px; }
+.ad3 { padding-left: 60px; }
+.am { display: flex; align-items: center; gap: 8px; padding: 7px 12px 7px 76px; font-size: 12px; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.03); background: rgba(0,0,0,0.2); cursor: pointer; }
+.am:hover { background: #252545; }
+.as { font-size: 11px; font-weight: 600; color: #a5b4fc; background: rgba(99,102,241,0.07); }
+/* 안 B: 연결선 */
+.br { display: flex; align-items: center; gap: 6px; padding: 9px 12px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.12s; }
+.br:hover { background: #1e1e40; }
+.bc { border-left: 2px solid; margin-left: 20px; }
+.bc0 { border-color: rgba(167,139,250,0.4); }
+.bc1 { border-color: rgba(74,222,128,0.4); }
+.bc2 { border-color: rgba(251,191,36,0.4); }
+.bm { display: flex; align-items: center; gap: 8px; padding: 7px 12px; font-size: 12px; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; }
+.bm:hover { background: #252545; }
+.bs { font-size: 11px; font-weight: 600; color: #a5b4fc; }
+/* 안 C: 계단 + 컬러 선 */
+.cr { display: flex; align-items: center; gap: 6px; padding: 9px 12px; cursor: pointer; border-left: 3px solid transparent; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.12s; }
+.cr:hover { background: #1e1e40; }
+.cd0 { padding-left: 12px; border-left-color: #7c3aed; }
+.cd1 { padding-left: 28px; border-left-color: #16a34a; }
+.cd2 { padding-left: 44px; border-left-color: #d97706; }
+.cd3 { padding-left: 60px; border-left-color: #dc2626; }
+.cm { display: flex; align-items: center; gap: 8px; padding: 7px 12px 7px 72px; font-size: 12px; color: #94a3b8; border-left: 3px solid rgba(220,38,38,0.35); border-bottom: 1px solid rgba(255,255,255,0.03); background: rgba(0,0,0,0.2); cursor: pointer; }
+.cm:hover { background: #252545; }
+.cs { font-size: 11px; font-weight: 600; color: #a5b4fc; background: rgba(99,102,241,0.07); }
+.recommend { border: 2px solid #7c3aed; }
+.reclabel { background: #7c3aed; color: white; font-size: 11px; padding: 3px 0; text-align: center; font-weight: 700; }
+.legend { margin-top: 28px; color: #64748b; font-size: 13px; line-height: 2.2; }
 </style>
 </head>
 <body>
+<h1>&#128203; 수신자 선택 — 그룹 트리 미리보기 3종</h1>
+<p class="subtitle">최상 / 대 / 중 / 소 계단식 — 아래 3가지 중 원하는 안을 선택해주세요</p>
+<div class="previews">
 
-<!-- ══════════════════════════════════════
-     안 A — 들여쓰기 계단식 (paddingLeft)
-     최상=0px, 대=18px, 중=36px, 소=54px
-     ══════════════════════════════════════ -->
+<!-- 안 A: 순수 계단 들여쓰기 -->
 <div class="preview-box">
-  <div class="preview-title">
-    안 A <span class="badge">들여쓰기 계단식</span>
-  </div>
-  <div class="list">
-
-    <!-- 최상위 -->
-    <div class="a-row open" style="padding-left:12px">
-      <span class="arrow">▼</span>
-      <span class="dot" style="background:#818cf8"></span>
-      <span class="badge-max">최상</span>
-      <span class="a-name">BNP카디프생명</span>
-      <span class="cnt">2명</span>
-    </div>
-
-      <!-- 대 -->
-      <div class="a-row open" style="padding-left:30px">
-        <span class="arrow">▼</span>
-        <span class="dot" style="background:#34d399"></span>
-        <span class="badge-d">대</span>
-        <span class="a-name">정액 납입 고객</span>
-        <span class="cnt">0명</span>
-      </div>
-
-        <!-- 중 -->
-        <div class="a-row open" style="padding-left:48px">
-          <span class="arrow">▼</span>
-          <span class="dot" style="background:#fbbf24"></span>
-          <span class="badge-m">중</span>
-          <span class="a-name">월납 100만원</span>
-          <span class="cnt">3명</span>
-        </div>
-
-          <!-- 멤버 -->
-          <div class="sel-all" style="padding-left:68px">
-            <div class="chk"></div>
-            <span>전체 선택 (3명)</span>
-          </div>
-          <div class="member-row" style="padding-left:68px">
-            <div class="chk"></div>
-            <span class="name">홍길동</span>
-            <span class="phone">010-1234-5678</span>
-          </div>
-          <div class="member-row" style="padding-left:68px">
-            <div class="chk"></div>
-            <span class="name">김철수</span>
-            <span class="phone">010-9999-8888</span>
-          </div>
-
-        <!-- 중 닫힘 -->
-        <div class="a-row" style="padding-left:48px">
-          <span class="arrow">▶</span>
-          <span class="dot" style="background:#fbbf24"></span>
-          <span class="badge-m">중</span>
-          <span class="a-name">월납 300만원</span>
-          <span class="cnt">0명</span>
-        </div>
-
-      <!-- 대 닫힘 -->
-      <div class="a-row" style="padding-left:30px">
-        <span class="arrow">▶</span>
-        <span class="dot" style="background:#34d399"></span>
-        <span class="badge-d">대</span>
-        <span class="a-name">추가납입 고객</span>
-        <span class="cnt">0명</span>
-      </div>
-
-    <!-- 최상위 닫힘 -->
-    <div class="a-row" style="padding-left:12px">
-      <span class="arrow">▶</span>
-      <span class="dot" style="background:#34d399"></span>
-      <span class="badge-max">최상</span>
-      <span class="a-name">자동차 보험</span>
-      <span class="cnt">12명</span>
-    </div>
-    <div class="a-row" style="padding-left:12px">
-      <span class="arrow">▶</span>
-      <span class="dot" style="background:#818cf8"></span>
-      <span class="badge-max">최상</span>
-      <span class="a-name">지인 / 인맥라인</span>
-      <span class="cnt">2명</span>
-    </div>
+  <div class="preview-title">안 A <span class="pbadge pb-a">순수 계단 들여쓰기</span></div>
+  <div class="tree-area">
+    <div class="ar ad0"><span class="tog">▼</span><span class="db db0">최상</span><span class="cdot" style="background:#a78bfa"></span><span class="gn">BNP카디프생명</span><span class="cnt">120명</span></div>
+    <div class="ar ad1"><span class="tog">▼</span><span class="db db1">대</span><span class="cdot" style="background:#4ade80"></span><span class="gn">정액 납입 고객</span><span class="cnt">80명</span></div>
+    <div class="ar ad2"><span class="tog">▼</span><span class="db db2">중</span><span class="cdot" style="background:#fbbf24"></span><span class="gn">월납 100만원</span><span class="cnt">30명</span></div>
+    <div class="ar ad3"><span class="tog">▶</span><span class="db db3">소</span><span class="cdot" style="background:#f87171"></span><span class="gn">사업자</span><span class="cnt">12명</span></div>
+    <div class="ar ad3"><span class="tog">▼</span><span class="db db3">소</span><span class="cdot" style="background:#f87171"></span><span class="gn">개인(남자)</span><span class="cnt">10명</span></div>
+    <div class="am as"><div class="ck"></div>&nbsp;전체선택 (10명)</div>
+    <div class="am"><div class="ck on">✓</div>&nbsp;홍길동 <span style="color:#475569;margin-left:8px">010-1234-5678</span></div>
+    <div class="am"><div class="ck"></div>&nbsp;김철수 <span style="color:#475569;margin-left:8px">010-9999-8888</span></div>
+    <div class="ar ad2"><span class="tog">▶</span><span class="db db2">중</span><span class="cdot" style="background:#fbbf24"></span><span class="gn">월납 300만원</span><span class="cnt">25명</span></div>
+    <div class="ar ad2"><span class="tog">▶</span><span class="db db2">중</span><span class="cdot" style="background:#fbbf24"></span><span class="gn">월납 200만원</span><span class="cnt">25명</span></div>
+    <div class="ar ad1"><span class="tog">▶</span><span class="db db1">대</span><span class="cdot" style="background:#4ade80"></span><span class="gn">추가납입 고객</span><span class="cnt">40명</span></div>
+    <div class="dv"></div>
+    <div class="ar ad0"><span class="tog">▶</span><span class="db db0">최상</span><span class="cdot" style="background:#818cf8"></span><span class="gn">자동차 보험</span><span class="cnt">12명</span></div>
+    <div class="ar ad0"><span class="tog">▶</span><span class="db db0">최상</span><span class="cdot" style="background:#34d399"></span><span class="gn">지인 / 인맥라인</span><span class="cnt">2명</span></div>
   </div>
 </div>
 
-
-<!-- ══════════════════════════════════════
-     안 B — border-left 연결선
-     모두 같은 좌측 시작, 하위는 왼쪽 선으로 그룹화
-     ══════════════════════════════════════ -->
+<!-- 안 B: 연결선 트리 -->
 <div class="preview-box">
-  <div class="preview-title">
-    안 B <span class="badge">연결선 트리</span>
-  </div>
-  <div class="list">
-
-    <!-- 최상위 -->
-    <div class="b-row open">
-      <span class="arrow">▼</span>
-      <span class="dot" style="background:#818cf8"></span>
-      <span class="badge-max">최상</span>
-      <span class="b-name">BNP카디프생명</span>
-      <span class="cnt">2명</span>
-    </div>
-
-    <div class="b-children" style="border-left-color: rgba(129,140,248,.4)">
-
-      <div class="b-row open">
-        <span class="arrow">▼</span>
-        <span class="dot" style="background:#34d399"></span>
-        <span class="badge-d">대</span>
-        <span class="b-name">정액 납입 고객</span>
-        <span class="cnt">0명</span>
+  <div class="preview-title">안 B <span class="pbadge pb-b">연결선 트리 (왼쪽 고정)</span></div>
+  <div class="tree-area">
+    <div class="br"><span class="tog">▼</span><span class="db db0">최상</span><span class="cdot" style="background:#a78bfa"></span><span class="gn">BNP카디프생명</span><span class="cnt">120명</span></div>
+    <div class="bc bc0">
+      <div class="br"><span class="tog">▼</span><span class="db db1">대</span><span class="cdot" style="background:#4ade80"></span><span class="gn">정액 납입 고객</span><span class="cnt">80명</span></div>
+      <div class="bc bc1">
+        <div class="br"><span class="tog">▼</span><span class="db db2">중</span><span class="cdot" style="background:#fbbf24"></span><span class="gn">월납 100만원</span><span class="cnt">30명</span></div>
+        <div class="bc bc2">
+          <div class="br"><span class="tog">▶</span><span class="db db3">소</span><span class="cdot" style="background:#f87171"></span><span class="gn">사업자</span><span class="cnt">12명</span></div>
+          <div class="br"><span class="tog">▼</span><span class="db db3">소</span><span class="cdot" style="background:#f87171"></span><span class="gn">개인(남자)</span><span class="cnt">10명</span></div>
+          <div class="bm bs"><div class="ck"></div>&nbsp;전체선택 (10명)</div>
+          <div class="bm"><div class="ck on">✓</div>&nbsp;홍길동 <span style="color:#475569;margin-left:8px">010-1234-5678</span></div>
+          <div class="bm"><div class="ck"></div>&nbsp;김철수 <span style="color:#475569;margin-left:8px">010-9999-8888</span></div>
+        </div>
+        <div class="br"><span class="tog">▶</span><span class="db db2">중</span><span class="cdot" style="background:#fbbf24"></span><span class="gn">월납 300만원</span><span class="cnt">25명</span></div>
+        <div class="br"><span class="tog">▶</span><span class="db db2">중</span><span class="cdot" style="background:#fbbf24"></span><span class="gn">월납 200만원</span><span class="cnt">25명</span></div>
       </div>
-
-      <div class="b-children" style="border-left-color: rgba(52,211,153,.4)">
-
-        <div class="b-row open">
-          <span class="arrow">▼</span>
-          <span class="dot" style="background:#fbbf24"></span>
-          <span class="badge-m">중</span>
-          <span class="b-name">월납 100만원</span>
-          <span class="cnt">3명</span>
-        </div>
-
-        <div class="b-children" style="border-left-color: rgba(251,191,36,.4)">
-          <div class="sel-all">
-            <div class="chk"></div><span>전체 선택 (3명)</span>
-          </div>
-          <div class="member-row">
-            <div class="chk"></div>
-            <span class="name">홍길동</span>
-            <span class="phone">010-1234-5678</span>
-          </div>
-          <div class="member-row">
-            <div class="chk"></div>
-            <span class="name">김철수</span>
-            <span class="phone">010-9999-8888</span>
-          </div>
-        </div>
-
-        <div class="b-row">
-          <span class="arrow">▶</span>
-          <span class="dot" style="background:#fbbf24"></span>
-          <span class="badge-m">중</span>
-          <span class="b-name">월납 300만원</span>
-          <span class="cnt">0명</span>
-        </div>
-
-      </div><!-- /b-children 중 -->
-
-      <div class="b-row">
-        <span class="arrow">▶</span>
-        <span class="dot" style="background:#34d399"></span>
-        <span class="badge-d">대</span>
-        <span class="b-name">추가납입 고객</span>
-        <span class="cnt">0명</span>
-      </div>
-
-    </div><!-- /b-children 최상 -->
-
-    <div class="b-row">
-      <span class="arrow">▶</span>
-      <span class="dot" style="background:#34d399"></span>
-      <span class="badge-max">최상</span>
-      <span class="b-name">자동차 보험</span>
-      <span class="cnt">12명</span>
+      <div class="br"><span class="tog">▶</span><span class="db db1">대</span><span class="cdot" style="background:#4ade80"></span><span class="gn">추가납입 고객</span><span class="cnt">40명</span></div>
     </div>
-    <div class="b-row">
-      <span class="arrow">▶</span>
-      <span class="dot" style="background:#818cf8"></span>
-      <span class="badge-max">최상</span>
-      <span class="b-name">지인 / 인맥라인</span>
-      <span class="cnt">2명</span>
-    </div>
+    <div class="dv" style="margin:4px 0"></div>
+    <div class="br"><span class="tog">▶</span><span class="db db0">최상</span><span class="cdot" style="background:#818cf8"></span><span class="gn">자동차 보험</span><span class="cnt">12명</span></div>
+    <div class="br"><span class="tog">▶</span><span class="db db0">최상</span><span class="cdot" style="background:#34d399"></span><span class="gn">지인 / 인맥라인</span><span class="cnt">2명</span></div>
   </div>
 </div>
 
-
-<!-- ══════════════════════════════════════
-     안 C — 들여쓰기 + 연결선 혼합
-     계단식이되 연결선도 함께 표시
-     ══════════════════════════════════════ -->
-<div class="preview-box">
-  <div class="preview-title">
-    안 C <span class="badge">계단 + 연결선 혼합</span>
-  </div>
-  <div class="list">
-
-    <!-- 최상위 -->
-    <div class="c-row open" style="padding-left:12px">
-      <span class="arrow">▼</span>
-      <span class="dot" style="background:#818cf8"></span>
-      <span class="badge-max">최상</span>
-      <span class="c-name">BNP카디프생명</span>
-      <span class="cnt">2명</span>
-    </div>
-
-    <div class="c-children" style="border-left:3px solid rgba(129,140,248,.35); margin-left:20px">
-
-      <div class="c-row open" style="padding-left:14px">
-        <span class="arrow">▼</span>
-        <span class="dot" style="background:#34d399"></span>
-        <span class="badge-d">대</span>
-        <span class="c-name">정액 납입 고객</span>
-        <span class="cnt">0명</span>
-      </div>
-
-      <div class="c-children" style="border-left:3px solid rgba(52,211,153,.35); margin-left:20px">
-
-        <div class="c-row open" style="padding-left:14px">
-          <span class="arrow">▼</span>
-          <span class="dot" style="background:#fbbf24"></span>
-          <span class="badge-m">중</span>
-          <span class="c-name">월납 100만원</span>
-          <span class="cnt">3명</span>
-        </div>
-
-        <div class="c-children" style="border-left:3px solid rgba(251,191,36,.35); margin-left:20px">
-          <div class="sel-all" style="padding-left:14px">
-            <div class="chk"></div><span>전체 선택 (3명)</span>
-          </div>
-          <div class="member-row" style="padding-left:14px">
-            <div class="chk"></div>
-            <span class="name">홍길동</span>
-            <span class="phone">010-1234-5678</span>
-          </div>
-          <div class="member-row" style="padding-left:14px">
-            <div class="chk"></div>
-            <span class="name">김철수</span>
-            <span class="phone">010-9999-8888</span>
-          </div>
-        </div>
-
-        <div class="c-row" style="padding-left:14px">
-          <span class="arrow">▶</span>
-          <span class="dot" style="background:#fbbf24"></span>
-          <span class="badge-m">중</span>
-          <span class="c-name">월납 300만원</span>
-          <span class="cnt">0명</span>
-        </div>
-
-      </div>
-
-      <div class="c-row" style="padding-left:14px">
-        <span class="arrow">▶</span>
-        <span class="dot" style="background:#34d399"></span>
-        <span class="badge-d">대</span>
-        <span class="c-name">추가납입 고객</span>
-        <span class="cnt">0명</span>
-      </div>
-
-    </div>
-
-    <div class="c-row" style="padding-left:12px">
-      <span class="arrow">▶</span>
-      <span class="dot" style="background:#34d399"></span>
-      <span class="badge-max">최상</span>
-      <span class="c-name">자동차 보험</span>
-      <span class="cnt">12명</span>
-    </div>
-    <div class="c-row" style="padding-left:12px">
-      <span class="arrow">▶</span>
-      <span class="dot" style="background:#818cf8"></span>
-      <span class="badge-max">최상</span>
-      <span class="c-name">지인 / 인맥라인</span>
-      <span class="cnt">2명</span>
-    </div>
+<!-- 안 C: 계단 + 컬러 선 (추천) -->
+<div class="preview-box recommend">
+  <div class="reclabel">&#11088; 추천</div>
+  <div class="preview-title">안 C <span class="pbadge pb-c">계단 + depth별 컬러 선</span></div>
+  <div class="tree-area">
+    <div class="cr cd0"><span class="tog">▼</span><span class="db db0">최상</span><span class="cdot" style="background:#a78bfa"></span><span class="gn">BNP카디프생명</span><span class="cnt">120명</span></div>
+    <div class="cr cd1"><span class="tog">▼</span><span class="db db1">대</span><span class="cdot" style="background:#4ade80"></span><span class="gn">정액 납입 고객</span><span class="cnt">80명</span></div>
+    <div class="cr cd2"><span class="tog">▼</span><span class="db db2">중</span><span class="cdot" style="background:#fbbf24"></span><span class="gn">월납 100만원</span><span class="cnt">30명</span></div>
+    <div class="cr cd3"><span class="tog">▶</span><span class="db db3">소</span><span class="cdot" style="background:#f87171"></span><span class="gn">사업자</span><span class="cnt">12명</span></div>
+    <div class="cr cd3"><span class="tog">▼</span><span class="db db3">소</span><span class="cdot" style="background:#f87171"></span><span class="gn">개인(남자)</span><span class="cnt">10명</span></div>
+    <div class="cm cs"><div class="ck"></div>&nbsp;전체선택 (10명)</div>
+    <div class="cm"><div class="ck on">✓</div>&nbsp;홍길동 <span style="color:#475569;margin-left:8px">010-1234-5678</span></div>
+    <div class="cm"><div class="ck"></div>&nbsp;김철수 <span style="color:#475569;margin-left:8px">010-9999-8888</span></div>
+    <div class="cr cd2"><span class="tog">▶</span><span class="db db2">중</span><span class="cdot" style="background:#fbbf24"></span><span class="gn">월납 300만원</span><span class="cnt">25명</span></div>
+    <div class="cr cd2"><span class="tog">▶</span><span class="db db2">중</span><span class="cdot" style="background:#fbbf24"></span><span class="gn">월납 200만원</span><span class="cnt">25명</span></div>
+    <div class="cr cd1"><span class="tog">▶</span><span class="db db1">대</span><span class="cdot" style="background:#4ade80"></span><span class="gn">추가납입 고객</span><span class="cnt">40명</span></div>
+    <div class="dv"></div>
+    <div class="cr cd0"><span class="tog">▶</span><span class="db db0">최상</span><span class="cdot" style="background:#818cf8"></span><span class="gn">자동차 보험</span><span class="cnt">12명</span></div>
+    <div class="cr cd0"><span class="tog">▶</span><span class="db db0">최상</span><span class="cdot" style="background:#34d399"></span><span class="gn">지인 / 인맥라인</span><span class="cnt">2명</span></div>
   </div>
 </div>
 
+</div>
+<div class="legend">
+  &#128161; <strong style="color:#60a5fa">안 A</strong> — 왼쪽 시작점: 최상=12px / 대=28px / 중=44px / 소=60px 순수 계단<br>
+  &#128161; <strong style="color:#4ade80">안 B</strong> — 왼쪽 고정, depth별 컬러 연결선(border-left)으로 계층 구분<br>
+  &#128161; <strong style="color:#c084fc">안 C ⭐</strong> — 계단 들여쓰기 + 각 행 왼쪽에 depth별 컬러 선 함께 표시
+</div>
 </body>
 </html>

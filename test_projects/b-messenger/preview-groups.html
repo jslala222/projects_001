@@ -1,0 +1,215 @@
+@"
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>그룹 관리 - 계단식 트리 미리보기</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0f0f1a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; padding: 30px; }
+h1 { color: #a78bfa; font-size: 18px; margin-bottom: 6px; }
+.subtitle { color: #64748b; font-size: 12px; margin-bottom: 24px; }
+.legend { display: flex; gap: 16px; align-items: center; background: #1a1a2e; border: 1px solid #2d2d4e; border-radius: 8px; padding: 10px 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #94a3b8; }
+.badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+.b0 { background: #2d1b69; color: #a78bfa; }
+.b1 { background: #14532d; color: #4ade80; }
+.b2 { background: #713f12; color: #fbbf24; }
+.b3 { background: #7f1d1d; color: #f87171; }
+.layout { display: flex; gap: 20px; max-width: 980px; }
+.sidebar { width: 200px; flex-shrink: 0; background: #1a1a2e; border: 1px solid #2d2d4e; border-radius: 12px; padding: 14px; height: fit-content; }
+.sb-title { font-size: 12px; color: #64748b; margin-bottom: 10px; }
+.sb-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #cbd5e1; }
+.sb-item:hover { background: #252545; }
+.sb-item.active { background: #2d1b69; color: #a78bfa; }
+.sb-left { display: flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.sb-cnt { font-size: 11px; color: #475569; }
+.sb-add { text-align: center; margin-top: 10px; font-size: 12px; color: #475569; cursor: pointer; padding: 6px; border-radius: 6px; }
+.sb-add:hover { background: #1e293b; color: #a78bfa; }
+.main { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+/* 계단식: depth별 margin-left */
+.row { display: flex; align-items: center; gap: 8px; border-radius: 10px; padding: 10px 14px; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; }
+.row:hover { filter: brightness(1.15); }
+.d0 { margin-left: 0; background: #1e1b4b; border-color: #3730a3; }
+.d1 { margin-left: 28px; background: #14291a; border-color: #166534; }
+.d2 { margin-left: 56px; background: #2d2008; border-color: #92400e; }
+.d3 { margin-left: 84px; background: #290d0d; border-color: #991b1b; }
+.selected { box-shadow: 0 0 0 2px #7c3aed66; }
+.toggle { font-size: 11px; color: #64748b; width: 16px; flex-shrink: 0; }
+.gdot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.name { font-size: 13px; font-weight: 500; flex: 1; }
+.cnt { font-size: 11px; color: #94a3b8; background: #1e293b; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
+.actions { display: flex; gap: 4px; flex-shrink: 0; }
+.btn { font-size: 11px; padding: 3px 8px; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; }
+.btn-sub  { background: #1e3a5f; color: #60a5fa; }
+.btn-mem  { background: #14532d; color: #4ade80; }
+.btn-send { background: #2d1b69; color: #a78bfa; }
+.btn-edit { background: transparent; color: #64748b; font-size: 14px; }
+.btn-del  { background: transparent; color: #f87171; font-size: 14px; }
+.divider { height: 1px; background: #1e293b; margin: 6px 0; }
+</style>
+</head>
+<body>
+<h1>👥 그룹 관리 — 계단식 트리 미리보기</h1>
+<p class="subtitle">최상위 → 대 → 중 → 소 순으로 왼쪽 시작점이 오른쪽으로 이동 (28px씩)</p>
+<div class="legend">
+  <span style="color:#a78bfa;font-weight:700;font-size:12px">계층:</span>
+  <div class="leg-item"><span class="badge b0">최상위</span> 시작 0px</div>
+  <div class="leg-item"><span class="badge b1">대</span> 시작 28px →</div>
+  <div class="leg-item"><span class="badge b2">중</span> 시작 56px →</div>
+  <div class="leg-item"><span class="badge b3">소</span> 시작 84px →</div>
+</div>
+<div class="layout">
+  <div class="sidebar">
+    <div class="sb-title">최상위 그룹 (7)</div>
+    <div class="sb-item"><div class="sb-left"><span class="dot" style="background:#ec4899"></span>ABL생명</div><span class="sb-cnt">2개</span></div>
+    <div class="sb-item"><div class="sb-left"><span class="dot" style="background:#94a3b8"></span>KB손해보험</div><span class="sb-cnt">2개</span></div>
+    <div class="sb-item"><div class="sb-left"><span class="dot" style="background:#4ade80"></span>자동차 보험</div><span class="sb-cnt">12개</span></div>
+    <div class="sb-item"><div class="sb-left"><span class="dot" style="background:#94a3b8"></span>화재보험</div><span class="sb-cnt">0개</span></div>
+    <div class="sb-item active"><div class="sb-left"><span class="dot" style="background:#4ade80"></span>BNP카디프생명</div><span class="sb-cnt">2개</span></div>
+    <div class="sb-item"><div class="sb-left"><span class="dot" style="background:#94a3b8"></span>취미생활</div><span class="sb-cnt">1개</span></div>
+    <div class="sb-item"><div class="sb-left"><span class="dot" style="background:#fb923c"></span>지인/인맥라인</div><span class="sb-cnt">2개</span></div>
+    <div class="sb-add">+ 최상위 추가</div>
+  </div>
+  <div class="main">
+    <!-- 최상위 d0 -->
+    <div class="row d0 selected">
+      <span class="toggle">▼</span>
+      <span class="badge b0">최상위</span>
+      <span class="gdot" style="background:#4ade80"></span>
+      <span class="name">BNP카디프생명</span>
+      <span class="cnt">0명</span>
+      <div class="actions">
+        <button class="btn btn-sub">📁 하위</button>
+        <button class="btn btn-mem">👥 멤버</button>
+        <button class="btn btn-send">✉ 발송</button>
+        <button class="btn btn-edit">✏️</button>
+        <button class="btn btn-del">🗑</button>
+      </div>
+    </div>
+    <!-- 대 d1 -->
+    <div class="row d1">
+      <span class="toggle">▼</span>
+      <span class="badge b1">대</span>
+      <span class="gdot" style="background:#4ade80"></span>
+      <span class="name">정액 납입 고객</span>
+      <span class="cnt">0명</span>
+      <div class="actions">
+        <button class="btn btn-sub">📁 하위</button>
+        <button class="btn btn-mem">👥 멤버</button>
+        <button class="btn btn-send">✉ 발송</button>
+        <button class="btn btn-edit">✏️</button>
+        <button class="btn btn-del">🗑</button>
+      </div>
+    </div>
+    <!-- 중 d2 -->
+    <div class="row d2">
+      <span class="toggle">▼</span>
+      <span class="badge b2">중</span>
+      <span class="gdot" style="background:#fbbf24"></span>
+      <span class="name">월납 100만원</span>
+      <span class="cnt">0명</span>
+      <div class="actions">
+        <button class="btn btn-sub">📁 하위</button>
+        <button class="btn btn-mem">👥 멤버</button>
+        <button class="btn btn-send">✉ 발송</button>
+        <button class="btn btn-edit">✏️</button>
+        <button class="btn btn-del">🗑</button>
+      </div>
+    </div>
+    <!-- 소 d3 -->
+    <div class="row d3">
+      <span class="toggle">▶</span>
+      <span class="badge b3">소</span>
+      <span class="gdot" style="background:#f87171"></span>
+      <span class="name">사업자</span>
+      <span class="cnt">0명</span>
+      <div class="actions">
+        <button class="btn btn-mem">👥 멤버</button>
+        <button class="btn btn-send">✉ 발송</button>
+        <button class="btn btn-edit">✏️</button>
+        <button class="btn btn-del">🗑</button>
+      </div>
+    </div>
+    <div class="row d3">
+      <span class="toggle">▶</span>
+      <span class="badge b3">소</span>
+      <span class="gdot" style="background:#f87171"></span>
+      <span class="name">개인(남자)</span>
+      <span class="cnt">0명</span>
+      <div class="actions">
+        <button class="btn btn-mem">👥 멤버</button>
+        <button class="btn btn-send">✉ 발송</button>
+        <button class="btn btn-edit">✏️</button>
+        <button class="btn btn-del">🗑</button>
+      </div>
+    </div>
+    <div class="row d3">
+      <span class="toggle">▶</span>
+      <span class="badge b3">소</span>
+      <span class="gdot" style="background:#f87171"></span>
+      <span class="name">개인(여자)</span>
+      <span class="cnt">0명</span>
+      <div class="actions">
+        <button class="btn btn-mem">👥 멤버</button>
+        <button class="btn btn-send">✉ 발송</button>
+        <button class="btn btn-edit">✏️</button>
+        <button class="btn btn-del">🗑</button>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <!-- 중 형제 -->
+    <div class="row d2">
+      <span class="toggle">▶</span>
+      <span class="badge b2">중</span>
+      <span class="gdot" style="background:#fbbf24"></span>
+      <span class="name">월납 300만원</span>
+      <span class="cnt">0명</span>
+      <div class="actions">
+        <button class="btn btn-sub">📁 하위</button>
+        <button class="btn btn-mem">👥 멤버</button>
+        <button class="btn btn-send">✉ 발송</button>
+        <button class="btn btn-edit">✏️</button>
+        <button class="btn btn-del">🗑</button>
+      </div>
+    </div>
+    <div class="row d2">
+      <span class="toggle">▶</span>
+      <span class="badge b2">중</span>
+      <span class="gdot" style="background:#fbbf24"></span>
+      <span class="name">월납 200만원</span>
+      <span class="cnt">0명</span>
+      <div class="actions">
+        <button class="btn btn-sub">📁 하위</button>
+        <button class="btn btn-mem">👥 멤버</button>
+        <button class="btn btn-send">✉ 발송</button>
+        <button class="btn btn-edit">✏️</button>
+        <button class="btn btn-del">🗑</button>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <!-- 대 형제 -->
+    <div class="row d1">
+      <span class="toggle">▶</span>
+      <span class="badge b1">대</span>
+      <span class="gdot" style="background:#4ade80"></span>
+      <span class="name">추가납입 고객</span>
+      <span class="cnt">0명</span>
+      <div class="actions">
+        <button class="btn btn-sub">📁 하위</button>
+        <button class="btn btn-mem">👥 멤버</button>
+        <button class="btn btn-send">✉ 발송</button>
+        <button class="btn btn-edit">✏️</button>
+        <button class="btn btn-del">🗑</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div style="margin-top:20px;color:#64748b;font-size:12px;">
+💡 최상위=0px / 대=28px / 중=56px / 소=84px — depth가 깊을수록 왼쪽 시작점이 오른쪽으로 이동
+</div>
+</body>
+</html>
+"@ | Out-File -FilePath "preview-groups.html" -Encoding UTF8
+start preview-groups.html

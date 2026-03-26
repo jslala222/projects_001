@@ -62,3 +62,11 @@ export function toKSTDateString(date: Date = new Date()): string {
 export function formatKSTLocale(date: Date = new Date()): string {
   return date.toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
 }
+
+// shadcn/ui 유틸: className 병합
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
