@@ -29,8 +29,11 @@ export interface GroupSendParams {
   /** 자동 fallback: 카카오 실패 시 SMS 발송 */
   fallback?: boolean;
   /** 발송 캠페인 이름 (미입력 시 자동 생성) */
-  campaignName?: string;
-}
+  campaignName?: string;  /** 클라이언트에서 전달하는 API 설정 (미완료 시 DB 조회 폴백) */
+  apiKey?: string;
+  apiSecret?: string;
+  senderNumber?: string;
+  kakaoChannelId?: string;}
 
 export interface SendProgress {
   total: number;
@@ -53,15 +56,22 @@ async function getApiSettings(userId: string): Promise<{
     .from(TABLES.API_KEYS)
     .select("api_key, api_secret, sender_number, kakao_channel_id, is_active")
     .eq("user_id", userId)
-    .eq("is_active", true)
+    .order("is_active", { ascending: false })  // 활성화된 키 우선
+    .limit(1)
     .single();
 
   if (error || !data) return null;
 
+  const apiKey = (data.api_key as string) || "";
+  const apiSecret = (data.api_secret as string) || "";
+
+  // API 키와 시크릿이 모두 있어야 실제 발송 가능
+  if (!apiKey.trim() || !apiSecret.trim()) return null;
+
   return {
-    apiKey: data.api_key as string,
-    apiSecret: data.api_secret as string,
-    senderNumber: data.sender_number as string,
+    apiKey,
+    apiSecret,
+    senderNumber: (data.sender_number as string) || "",
     kakaoChannelId: (data.kakao_channel_id as string) || undefined,
   };
 }
@@ -204,6 +214,7 @@ export async function sendToGroup(
   campaignId?: string;
   successCount: number;
   failCount: number;
+  isSimulation?: boolean;
   error?: string;
 }> {
   // getGroupMembersForSend 가 이미 RLS를 통과해 반환한 members 에서 userId 추출
@@ -215,8 +226,18 @@ export async function sendToGroup(
     return { success: false, successCount: 0, failCount: 0, error: "발송 대상이 없습니다" };
   }
 
-  // API 설정 조회
-  const apiSettings = await getApiSettings(userId);
+  // API 설정 조회: params에 apiKey가 있으면 직접 사용, 없으면 DB 조회
+  let apiSettings: { apiKey: string; apiSecret: string; senderNumber: string; kakaoChannelId?: string } | null = null;
+  if (params.apiKey && params.apiSecret) {
+    apiSettings = {
+      apiKey: params.apiKey,
+      apiSecret: params.apiSecret,
+      senderNumber: params.senderNumber ?? "",
+      kakaoChannelId: params.kakaoChannelId,
+    };
+  } else {
+    apiSettings = await getApiSettings(userId);
+  }
   const isSimulation = !apiSettings;
 
   // 캠페인 이름
@@ -261,14 +282,14 @@ export async function sendToGroup(
       sendError = sendSuccess ? undefined : "시뮬레이션: 발송 실패";
     } else {
       const result = await sendSingleMessage(
-        apiSettings.apiKey,
-        apiSettings.apiSecret,
-        apiSettings.senderNumber,
+        apiSettings!.apiKey,
+        apiSettings!.apiSecret,
+        apiSettings!.senderNumber,
         member.phone,
         personalizedText,
         params.channel,
         {
-          kakaoChannelId: apiSettings.kakaoChannelId,
+          kakaoChannelId: apiSettings!.kakaoChannelId,
           templateId: params.kakaoTemplateId,
           imageId: params.imageId,
         }
@@ -279,9 +300,9 @@ export async function sendToGroup(
       // fallback: 카카오 실패 → SMS
       if (!sendSuccess && params.fallback && params.channel.startsWith("kakao")) {
         const fallbackResult = await sendSingleMessage(
-          apiSettings.apiKey,
-          apiSettings.apiSecret,
-          apiSettings.senderNumber,
+          apiSettings!.apiKey,
+          apiSettings!.apiSecret,
+          apiSettings!.senderNumber,
           member.phone,
           personalizedText,
           "sms"
@@ -309,5 +330,5 @@ export async function sendToGroup(
   // 캠페인 완료 처리
   await finalizeCampaign(campaignId, successCount, failCount);
 
-  return { success: true, campaignId, successCount, failCount };
+  return { success: true, campaignId, successCount, failCount, isSimulation };
 }

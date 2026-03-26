@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { importContactsFromFile } from "@/app/actions/customers";
-import { formatPhone } from "@/lib/phoneUtils";
+import { formatPhone, isValidKoreanPhone } from "@/lib/phoneUtils";
 
 type Row = { name: string; phone: string; email?: string };
 type Result = {
@@ -72,7 +72,7 @@ function parseContacts(fileName: string, text: string): Row[] {
       const phone = norm(telMatch?.[1]?.trim() ?? "");
       const emailMatch = card.match(/^EMAIL[^:]*:([^\r\n]+)/im);
       const email = emailMatch?.[1]?.trim().replace(/\r/g, "");
-      if (name && phone.length >= 9) result.push({ name, phone, email });
+      if (name && isValidKoreanPhone(phone)) result.push({ name, phone, email });
     }
     return result;
   }

@@ -32,6 +32,9 @@ import { toast } from "sonner";
 import type { Group, Customer } from "@/types";
 import { getGroupMembersForSend } from "@/app/actions/groups";
 import { sendToGroup, type GroupSendParams } from "@/app/actions/send";
+import { dataStore } from "@/lib/store";
+import { isValidKoreanPhone } from "@/lib/phoneUtils";
+import { useTemplates } from "@/hooks/useTemplates";
 import styles from "@/styles/groupSend.module.css";
 
 // ── 채널 정의 ─────────────────────────────────────────────────────
@@ -149,6 +152,7 @@ export default function GroupSendModal({ group, onClose }: Props) {
   const [message, setMessage] = useState("");
   const [templateId, setTemplateId] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { templates: savedTemplates, loading: templatesLoading } = useTemplates(channel);
 
   // Step 3
   const [members, setMembers] = useState<Customer[]>([]);
@@ -163,6 +167,7 @@ export default function GroupSendModal({ group, onClose }: Props) {
     campaignId?: string;
     successCount: number;
     failCount: number;
+    isSimulation?: boolean;
     error?: string;
   } | null>(null);
 
@@ -198,6 +203,11 @@ export default function GroupSendModal({ group, onClose }: Props) {
     setSending(true);
     setDone(false);
     startTransition(async () => {
+      // 클라이언트에서 API 설정 읽기 (Server Action에서 RLS 세션 문제 방지)
+      const apiSettingsList = await dataStore.getApiSettings();
+      const apiSetting = apiSettingsList.find(s => s.provider === "solapi" && s.apiKey && s.apiSecret)
+        ?? apiSettingsList[0];
+
       const params: GroupSendParams = {
         groupId: group.id,
         groupName: group.name,
@@ -205,6 +215,10 @@ export default function GroupSendModal({ group, onClose }: Props) {
         message,
         kakaoTemplateId: channel === "kakao_alim" ? templateId : undefined,
         fallback: channel.startsWith("kakao"),
+        apiKey: apiSetting?.apiKey,
+        apiSecret: apiSetting?.apiSecret,
+        senderNumber: apiSetting?.senderNumber,
+        kakaoChannelId: apiSetting?.kakaoChannelId ?? undefined,
       };
       const res = await sendToGroup(params, members);
       setResult(res);
@@ -270,6 +284,33 @@ export default function GroupSendModal({ group, onClose }: Props) {
           <p className={styles.stepDesc}>
             메시지를 입력하세요 ({message.length}/{currentChannel.maxLen}자)
           </p>
+
+          {/* 저장된 템플릿 불러오기 */}
+          <div className={styles.templatePickerRow}>
+            <select
+              className={styles.templatePicker}
+              defaultValue=""
+              disabled={templatesLoading}
+              onChange={(e) => {
+                const selected = savedTemplates.find(t => t.id === e.target.value);
+                if (!selected) return;
+                setMessage(selected.content);
+                // 알림톡 templateId는 DB에 저장된 id를 그대로 사용
+                if (channel === "kakao_alim") setTemplateId(selected.id);
+                e.target.value = ""; // 선택 후 초기화
+              }}
+            >
+              <option value="" disabled>
+                {templatesLoading ? "템플릿 불러오는 중…" : savedTemplates.length === 0 ? "저장된 템플릿 없음" : "📂 저장된 템플릿 불러오기"}
+              </option>
+              {savedTemplates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {channel === "kakao_alim" && (
             <input
               className={styles.templateInput}
@@ -347,6 +388,16 @@ export default function GroupSendModal({ group, onClose }: Props) {
           <div className={styles.recipientCount}>{members.length.toLocaleString()}</div>
           <p className={styles.recipientLabel}>총 발송 대상 (하위 그룹 포함 중복 제거)</p>
         </div>
+        {(() => {
+          const invalid = members.filter(m => !isValidKoreanPhone(m.phone));
+          if (invalid.length === 0) return null;
+          return (
+            <div style={{ background: "#fff3cd", border: "1px solid #ffc107", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#856404", lineHeight: 1.6 }}>
+              ⚠️ <strong>번호 오류 {invalid.length}건</strong> — 발송에서 자동 제외됩니다.<br />
+              {invalid.slice(0, 3).map(m => `${m.name}(${m.phone})`).join(", ")}{invalid.length > 3 ? ` 외 ${invalid.length - 3}건` : ""}
+            </div>
+          );
+        })()}
         <div className={styles.recipientSampleWrap}>
           <p className={styles.recipientSampleTitle}>발송 대상 일부 (최대 10명)</p>
           <ul className={styles.recipientList}>
@@ -398,6 +449,11 @@ export default function GroupSendModal({ group, onClose }: Props) {
           <p className={styles.resultTitle}>
             {result.success ? "발송 완료" : "발송 실패"}
           </p>
+          {result.success && result.isSimulation && (
+            <p style={{ fontSize: 12, color: "#f59e0b", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 6, padding: "4px 10px", margin: "4px 0 8px" }}>
+              ⚠️ 테스트 모드 — 실제 발송 안 됨. 설정 페이지에서 API 키를 저장하세요.
+            </p>
+          )}
           {result.success ? (
             <div className={styles.resultStats}>
               <div className={styles.resultStat}>
@@ -418,9 +474,6 @@ export default function GroupSendModal({ group, onClose }: Props) {
             </div>
           ) : (
             <p className={styles.resultError}>{result.error}</p>
-          )}
-          {result.campaignId && (
-            <p className={styles.resultCampaignId}>캠페인 ID: {result.campaignId}</p>
           )}
         </div>
       );

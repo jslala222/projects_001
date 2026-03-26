@@ -14,9 +14,13 @@ const CRON_SECRET = process.env.CRON_SECRET;
 
 export async function POST(req: NextRequest) {
   // 배포 환경에서는 시크릿 검증
+  // Vercel Cron: Authorization: Bearer <CRON_SECRET>
+  // Supabase pg_cron: x-cron-secret: <CRON_SECRET>
   if (CRON_SECRET) {
-    const secret = req.headers.get("x-cron-secret");
-    if (secret !== CRON_SECRET) {
+    const authHeader = req.headers.get("authorization") ?? "";
+    const xSecret = req.headers.get("x-cron-secret") ?? "";
+    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (bearerToken !== CRON_SECRET && xSecret !== CRON_SECRET) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
   }

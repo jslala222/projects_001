@@ -5,7 +5,7 @@
 // ================================================================
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
+import { useState, useEffect, useCallback, useRef, Fragment } from "react";
 import { dataStore, Contact, Group, AddressBook } from "@/lib/store";
 import { useAuth } from "@/components/AuthContext";
 import AddressBookTabs from "@/components/AddressBookTabs";
@@ -158,12 +158,14 @@ function FacetedDropdown({ label, icon, options, selected, onToggle, onClear }: 
 export default function CustomersPage() {
   const { plan } = useAuth();
 
-  // 원본 데이터 (한 번만 로드)
-  const [allCustomers, setAllCustomers] = useState<Contact[]>([]);
+  // 서버사이드 페이지네이션 상태
+  const [pagedCustomers, setPagedCustomers] = useState<Contact[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [groups, setGroups] = useState<Group[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [addressBooks, setAddressBooks] = useState<AddressBook[]>([]);
   const [loading, setLoading] = useState(true);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   // 필터 상태 (다중선택)
   const [activeBookId, setActiveBookId] = useState<string | null>(null);
@@ -186,70 +188,65 @@ export default function CustomersPage() {
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupColor, setNewGroupColor] = useState("#667eea");
 
-  // ── 전체 연락처 한 번만 로드 (클라이언트사이드 필터링)
-  const loadAll = useCallback(async () => {
-    setLoading(true);
-    const [customers, grps, tags, books] = await Promise.all([
-      dataStore.getContacts(),   // 전체 연락처 (별표 조건 없음)
+  // ── 메타데이터 로드 (그룹/태그/주소록)
+  const loadMeta = useCallback(async () => {
+    const [grps, tags, books] = await Promise.all([
       dataStore.getGroups(),
       dataStore.getAllTags(),
       dataStore.getAddressBooks(),
     ]);
-    setAllCustomers(customers);
     setGroups(grps);
     setAllTags(tags);
     setAddressBooks(books);
-    setLoading(false);
   }, []);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => { loadMeta(); }, [loadMeta]);
 
-  // ── 그룹별 실제 고객 카운트 ──
-  const groupCountMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    allCustomers.forEach(c => {
-      c.groupIds.forEach(gId => { map[gId] = (map[gId] || 0) + 1; });
-    });
-    return map;
-  }, [allCustomers]);
+  // ── 메인 연락처 로드 (서버사이드 페이지네이션 + 검색)
+  const loadAll = useCallback(async () => { await loadMeta(); }, [loadMeta]);
 
-  // ── 태그별 실제 고객 카운트 ──
-  const tagCountMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    allCustomers.forEach(c => {
-      (c.interests || []).forEach((t: string) => { map[t] = (map[t] || 0) + 1; });
-    });
-    return map;
-  }, [allCustomers]);
+  // ── 검색 debounce ──
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  // ── 클라이언트사이드 필터 + 정렬 ──
-  const filtered = useMemo(() => {
-    let list = allCustomers;
-    if (activeBookId) {
-      list = list.filter(c => c.addressBookId === activeBookId);
-    }
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(c => c.name.toLowerCase().includes(q) || c.phone.includes(q));
-    }
-    if (selectedGroups.size > 0) {
-      list = list.filter(c => c.groupIds.some(gId => selectedGroups.has(gId)));
-    }
-    if (selectedTags.size > 0) {
-      list = list.filter(c => (c.interests || []).some((t: string) => selectedTags.has(t)));
-    }
-    return [...list].sort((a, b) => {
-      if (sortKey === "name_asc")       return a.name.localeCompare(b.name, "ko");
-      if (sortKey === "name_desc")      return b.name.localeCompare(a.name, "ko");
-      if (sortKey === "join_date_desc") return (b.joinDate || "").localeCompare(a.joinDate || "");
-      if (sortKey === "join_date_asc")  return (a.joinDate || "").localeCompare(b.joinDate || "");
-      if (sortKey === "created_desc")   return b.createdAt.localeCompare(a.createdAt);
-      return a.createdAt.localeCompare(b.createdAt);
-    });
-  }, [allCustomers, activeBookId, search, selectedGroups, selectedTags, sortKey]);
+  // ── 서버사이드 데이터 fetch ──
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const sortMap: Record<typeof sortKey, { sortBy: "name" | "created_at" | "join_date"; sortDir: "asc" | "desc" }> = {
+        name_asc:       { sortBy: "name",       sortDir: "asc"  },
+        name_desc:      { sortBy: "name",       sortDir: "desc" },
+        join_date_desc: { sortBy: "join_date",  sortDir: "desc" },
+        join_date_asc:  { sortBy: "join_date",  sortDir: "asc"  },
+        created_desc:   { sortBy: "created_at", sortDir: "desc" },
+        created_asc:    { sortBy: "created_at", sortDir: "asc"  },
+      };
+      const { sortBy, sortDir } = sortMap[sortKey];
+      const filterGroupIds = selectedGroups.size > 0 ? Array.from(selectedGroups) : undefined;
+      const filterTags     = selectedTags.size > 0   ? Array.from(selectedTags)   : undefined;
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
-  const pagedContacts = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+      const result = await dataStore.getContactsPaged(
+        currentPage, PAGE_SIZE, false,
+        activeBookId,
+        debouncedSearch,
+        sortBy, sortDir,
+        filterGroupIds,
+        filterTags,
+      );
+      if (!cancelled) {
+        setPagedCustomers(result.contacts);
+        setTotalCount(result.total);
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentPage, debouncedSearch, activeBookId, selectedGroups, selectedTags, sortKey]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE) || 1;
+  const pagedContacts = pagedCustomers;
 
   const hasFilter = !!activeBookId || selectedGroups.size > 0 || selectedTags.size > 0 || search.trim().length > 0;
 
@@ -322,12 +319,12 @@ export default function CustomersPage() {
 
   const groupOptions: FacetOption[] = groups.map(g => ({
     id: g.id, label: g.name, color: g.color,
-    count: groupCountMap[g.id] ?? 0,
+    count: g.contactCount ?? 0,
   }));
 
   const tagOptions: FacetOption[] = allTags.map(t => ({
     id: t, label: t,
-    count: tagCountMap[t] ?? 0,
+    count: 0,
   }));
 
   return (
@@ -338,8 +335,8 @@ export default function CustomersPage() {
         <div>
           <h1 className="page-title">💎 고객 관리</h1>
           <p className="page-subtitle">
-            저장된 연락처 {allCustomers.length}명
-            {hasFilter && <span style={{ color: "#818cf8", marginLeft: 8 }}>→ 필터 적용 중 {filtered.length}명</span>}
+            저장된 연락처 {totalCount}명
+            {hasFilter && <span style={{ color: "#818cf8", marginLeft: 8 }}>→ 필터 적용 중 {totalCount}명</span>}
           </p>
         </div>
         <button className="btn btn-secondary" onClick={() => setShowGroupModal(true)}>
@@ -353,7 +350,7 @@ export default function CustomersPage() {
       {/* 주소록 탭 — 삭제 기능 없이 조회/필터 전용 */}
       <AddressBookTabs
         books={addressBooks}
-        totalCount={allCustomers.length}
+        totalCount={totalCount}
         activeBookId={activeBookId}
         plan={plan || "free"}
         onTabChange={(bookId) => { setActiveBookId(bookId); resetPage(); }}
@@ -656,13 +653,13 @@ export default function CustomersPage() {
         )}
 
         {/* 페이지네이션 */}
-        {filtered.length > PAGE_SIZE && (
+        {totalCount > PAGE_SIZE && (
           <div className={styles.pagination}>
             <button className={styles.pageBtn} onClick={() => setCurrentPage(0)} disabled={currentPage === 0}>◄◄</button>
             <button className={styles.pageBtn} onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 0}>◄</button>
             <span className={styles.pageInfo}>
               <strong>{currentPage + 1}</strong> / {totalPages}
-              <span className={styles.pageTotal}> ({filtered.length.toLocaleString()}명)</span>
+              <span className={styles.pageTotal}> ({totalCount.toLocaleString()}명)</span>
             </span>
             <button className={styles.pageBtn} onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage >= totalPages - 1}>▶</button>
             <button className={styles.pageBtn} onClick={() => setCurrentPage(totalPages - 1)} disabled={currentPage >= totalPages - 1}>▶▶</button>
@@ -757,7 +754,7 @@ export default function CustomersPage() {
                     </div>
                     <span style={{ fontWeight: 600 }}>{g.name}</span>
                     <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                      고객 {groupCountMap[g.id] ?? 0}명 / 전체 {g.contactCount}명
+                      전체 {g.contactCount}명
                     </span>
                   </div>
                   <button

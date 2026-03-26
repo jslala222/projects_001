@@ -7,13 +7,15 @@ import { createSolapiClient, sendByChannel } from "@/lib/solapi";
 
 export async function POST(req: NextRequest) {
   try {
-    const { apiKey, apiSecret, senderNumber, recipientNumber, message, channel } = await req.json();
+    const { apiKey, apiSecret, senderNumber, kakaoChannelId, recipientNumber, message, channel } = await req.json();
 
     if (!apiKey || !apiSecret) {
-      return NextResponse.json(
-        { success: false, message: "솔라피 API 키가 설정되지 않았습니다. 설정 페이지에서 입력해주세요." },
-        { status: 400 }
-      );
+      // Mock 모드: 실제 발송 없이 성공 시뮬레이션
+      return NextResponse.json({
+        success: true,
+        message: `⚠️ Mock 발송 완료 (${recipientNumber || "?"}) — 실제 발송 아님`,
+        mock: true,
+      });
     }
 
     if (!senderNumber || !recipientNumber) {
@@ -28,6 +30,7 @@ export async function POST(req: NextRequest) {
       apiKey,
       apiSecret,
       senderNumber,
+      ...(kakaoChannelId && { kakaoChannelId }),
     });
 
     // 채널별 발송
@@ -40,7 +43,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `✅ 발송 성공! (${recipientNumber})`,
+      message: `발송 요청 성공! (${recipientNumber}) — 솔라피 콘솔에서 수신 확인하세요.`,
+      statusCode: (result as { statusCode?: string }).statusCode,
       result,
     });
   } catch (error: unknown) {

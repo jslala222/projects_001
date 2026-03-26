@@ -45,8 +45,13 @@ const EMPTY_FORM = {
   title: "",
   message: "",
   channel: "sms",
-  scheduledAt: "",
+  scheduledDate: "",
+  scheduledHour: "09",
+  scheduledMinute: "00",
 };
+
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+const MINUTES = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
 
 // ── 유틸: 토큰 가져오기 ───────────────────────────────────────────
 async function getAuthToken() {
@@ -89,6 +94,18 @@ export default function ScheduledPage() {
 
   useEffect(() => { loadItems(); }, [loadItems]);
 
+  // ── 1분 폴링: 페이지 열려있을 때 pending 항목 자동 처리 ──────────
+  useEffect(() => {
+    const tick = async () => {
+      const res = await fetch("/api/scheduled/process", { method: "POST" });
+      const json = await res.json();
+      if (json.processed > 0) await loadItems();
+    };
+    tick(); // 페이지 진입 시 즉시 1회
+    const timer = setInterval(tick, 60 * 1000);
+    return () => clearInterval(timer);
+  }, [loadItems]);
+
   // ── 예약 취소 ────────────────────────────────────────────────────
   async function handleCancel(id: string) {
     if (!confirm("예약을 취소하시겠습니까?")) return;
@@ -130,7 +147,7 @@ export default function ScheduledPage() {
 
     if (!form.title.trim()) { setError("제목을 입력하세요."); return; }
     if (!form.message.trim()) { setError("메시지 내용을 입력하세요."); return; }
-    if (!form.scheduledAt) { setError("예약 날짜/시간을 선택하세요."); return; }
+    if (!form.scheduledDate) { setError("예약 날짜를 선택하세요."); return; }
     if (recipients.length === 0) { setError("수신자를 1명 이상 추가하세요."); return; }
 
     const invalidCount = recipients.filter(r => !r.valid).length;
@@ -139,7 +156,7 @@ export default function ScheduledPage() {
       return;
     }
 
-    const scheduledDate = new Date(form.scheduledAt);
+    const scheduledDate = new Date(`${form.scheduledDate}T${form.scheduledHour}:${form.scheduledMinute}:00`);
     if (scheduledDate <= new Date()) {
       setError("예약 시간은 현재 시간 이후로 설정해주세요.");
       return;
@@ -179,11 +196,11 @@ export default function ScheduledPage() {
     }
   }
 
-  // ── 최솟값 설정 (현재 시간 + 5분) ────────────────────────────────
-  function getMinDateTime() {
-    const d = new Date(Date.now() + 5 * 60 * 1000);
+  // ── 최솟값 설정 ────────────────────────────────────────────────
+  function getMinDate() {
+    const d = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
 
   const filtered = filter === "all" ? items : items.filter(i => i.status === filter);
@@ -312,7 +329,7 @@ export default function ScheduledPage() {
       {/* 예약 등록 모달 */}
       {showModal && (
         <div className={styles.modalOverlay} onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
-          <div className={styles.modal}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <div className={styles.modalTitle}>📅 예약 발송 등록</div>
 
             {error && (
@@ -379,14 +396,37 @@ export default function ScheduledPage() {
               <label className={styles.label}>
                 예약 날짜/시간 <span className={styles.required}>*</span>
               </label>
-              <input
-                type="datetime-local"
-                className={styles.input}
-                min={getMinDateTime()}
-                value={form.scheduledAt}
-                onChange={e => setForm(f => ({ ...f, scheduledAt: e.target.value }))}
-              />
-              <div className={styles.hint}>⏰ 현재 시간 기준 최소 5분 이후로 설정해주세요.</div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  type="date"
+                  className={styles.input}
+                  min={getMinDate()}
+                  value={form.scheduledDate}
+                  onChange={e => setForm(f => ({ ...f, scheduledDate: e.target.value }))}
+                  style={{ flex: 1 }}
+                />
+                <select
+                  className={styles.select}
+                  value={form.scheduledHour}
+                  onChange={e => setForm(f => ({ ...f, scheduledHour: e.target.value }))}
+                  style={{ width: 72 }}
+                >
+                  {HOURS.map(h => (
+                    <option key={h} value={h}>{h}시</option>
+                  ))}
+                </select>
+                <select
+                  className={styles.select}
+                  value={form.scheduledMinute}
+                  onChange={e => setForm(f => ({ ...f, scheduledMinute: e.target.value }))}
+                  style={{ width: 72 }}
+                >
+                  {MINUTES.map(m => (
+                    <option key={m} value={m}>{m}분</option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.hint}>⏰ 현재 시간 기준 최소 5분 이후로 설정해주세요. (24시간 형식)</div>
             </div>
 
             {/* 버튼 */}

@@ -4,7 +4,7 @@
 // CLAUDE.md: 테이블명 앞에 'b-messenger_' 접두사 필수
 // ================================================================
 import { supabase, TABLES } from "./supabase";
-import { createSolapiClient, sendByChannel, type SolapiConfig } from "./solapi";
+import { toKSTDateString } from "./utils";
 
 // ── 타입 정의 ──
 export interface Contact {
@@ -240,7 +240,7 @@ class DataStore {
     search?: string,
     sortBy: "name" | "created_at" | "join_date" | "gender" | "marketing_agree" = "name",
     sortDir: "asc" | "desc" = "asc",
-    filterGroupId?: string | null,
+    filterGroupIds?: string[] | null,
     filterTags?: string[]
   ): Promise<{ contacts: Contact[]; total: number }> {
     const tenantId = await getTenantId();
@@ -257,10 +257,11 @@ class DataStore {
       q = q.eq("address_book_id", addressBookId);
     }
     if (search && search.trim()) {
-      q = q.or(`name.ilike.%${search.trim()}%,phone.ilike.%${search.trim()}%`);
+      const s = search.trim();
+      q = q.or(`name.ilike.%${s}%,phone.ilike.%${s}%,email.ilike.%${s}%,memo.ilike.%${s}%`);
     }
-    if (filterGroupId) {
-      q = q.contains("group_ids", [filterGroupId]);
+    if (filterGroupIds && filterGroupIds.length > 0) {
+      q = q.overlaps("group_ids", filterGroupIds);
     }
     if (filterTags && filterTags.length > 0) {
       q = q.overlaps("interests", filterTags);
@@ -680,21 +681,30 @@ class DataStore {
         personalizedMessage = personalizedMessage.replace(/#{전화번호}/g, contact.phone);
       }
 
-      // 솔라피 API가 활성화되어 있으면 실제 발송
+      // 솔라피 API가 활성화되어 있으면 실제 발송 (서버 API 라우트 경유)
       if (activeSetting && activeSetting.isActive) {
         try {
-          const solapiConfig: SolapiConfig = {
-            apiKey: activeSetting.apiKey,
-            apiSecret: activeSetting.apiSecret,
-            senderNumber: activeSetting.senderNumber || "",
-            kakaoChannelId: activeSetting.kakaoChannelId,
-          };
-          const client = createSolapiClient(solapiConfig);
-
-          await sendByChannel(client, campaign!.channel, contact.phone, personalizedMessage);
-          channelUsed = campaign!.channel;
-          status = "sent";
-          success++;
+          const res = await fetch("/api/solapi/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              apiKey: activeSetting.apiKey,
+              apiSecret: activeSetting.apiSecret,
+              senderNumber: activeSetting.senderNumber || "",
+              kakaoChannelId: activeSetting.kakaoChannelId,
+              recipientNumber: contact.phone,
+              message: personalizedMessage,
+              channel: campaign!.channel,
+            }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            channelUsed = campaign!.channel;
+            status = "sent";
+            success++;
+          } else {
+            throw new Error(data.message || "발송 실패");
+          }
         } catch (err) {
           errorMessage = err instanceof Error ? err.message : "발송 실패";
           status = "failed";
@@ -777,14 +787,19 @@ class DataStore {
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", tenantId);
 
-    // 최근 7일 일별 통계 (발송 로그 기반)
+    // 최근 7일 일별 통계 (캠페인 날짜별 집계)
     const dailyStats = Array.from({ length: 7 }, (_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - (6 - i));
+      const dateStr = toKSTDateString(date);
+      const dayCampaigns = campaignList.filter(c => {
+        const raw = (c as Record<string, unknown>).started_at as string || (c as Record<string, unknown>).created_at as string || "";
+        return raw.startsWith(dateStr);
+      });
       return {
         date: `${date.getMonth() + 1}/${date.getDate()}`,
-        sent: Math.floor(Math.random() * 200) + 50,
-        failed: Math.floor(Math.random() * 20),
+        sent: dayCampaigns.reduce((sum, c) => sum + ((c as Record<string, unknown>).success_count as number || 0), 0),
+        failed: dayCampaigns.reduce((sum, c) => sum + ((c as Record<string, unknown>).fail_count as number || 0), 0),
       };
     });
 

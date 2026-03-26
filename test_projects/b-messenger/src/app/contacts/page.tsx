@@ -32,7 +32,7 @@ const SORT_OPTIONS: SortOption[] = [
 
 export default function ContactsPage() {
   const { plan, loading: authLoading } = useAuth();
-  const { limits } = usePlan();
+  const { limits, can } = usePlan();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [addressBooks, setAddressBooks] = useState<AddressBook[]>([]);
   const [totalContactCount, setTotalContactCount] = useState(0);
@@ -40,6 +40,7 @@ export default function ContactsPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [activeBookId, setActiveBookId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortIdx, setSortIdx] = useState(0); // 기본: 이름 가나다순
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -59,7 +60,13 @@ export default function ContactsPage() {
 
   const isPro = plan === "pro" || plan === "enterprise"; // AddressBookTabs plan prop 전달용
 
-  // 서버사이드 데이터 로드
+  // 검색 debounce (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // 서버사이드 데이터 로드 (취소 플래그 적용)
   const loadData = useCallback(async (
     page: number,
     bookId: string | null,
@@ -83,12 +90,28 @@ export default function ContactsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    loadData(currentPage, activeBookId, search, sortIdx);
-  }, [currentPage, activeBookId, search, sortIdx, loadData, authLoading]);
+    let cancelled = false;
+    (async () => {
+      const { sortBy, sortDir } = SORT_OPTIONS[sortIdx];
+      const [result, books, totalAll] = await Promise.all([
+        dataStore.getContactsPaged(
+          currentPage, PAGE_SIZE, false, activeBookId, debouncedSearch, sortBy, sortDir
+        ),
+        dataStore.getAddressBooks(),
+        dataStore.getContactsCount(),
+      ]);
+      if (cancelled) return;
+      setContacts(result.contacts);
+      setTotalFiltered(result.total);
+      setAddressBooks(books);
+      setTotalContactCount(totalAll);
+    })();
+    return () => { cancelled = true; };
+  }, [currentPage, activeBookId, debouncedSearch, sortIdx, authLoading]);
 
   const refresh = useCallback(() => {
-    loadData(currentPage, activeBookId, search, sortIdx);
-  }, [loadData, currentPage, activeBookId, search, sortIdx]);
+    loadData(currentPage, activeBookId, debouncedSearch, sortIdx);
+  }, [loadData, currentPage, activeBookId, debouncedSearch, sortIdx]);
 
   // 탭 전환 시 페이지 초기화
   const handleTabChange = useCallback((bookId: string | null) => {
@@ -99,6 +122,10 @@ export default function ContactsPage() {
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
     setSearch(e.target.value);
     setCurrentPage(0);
+    // 검색어 입력 시 자동으로 전체 주소록에서 검색 (탭 필터 해제)
+    if (e.target.value.trim() && activeBookId !== null) {
+      setActiveBookId(null);
+    }
   }
 
   function handleSortChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -157,8 +184,19 @@ export default function ContactsPage() {
           <p className="page-subtitle">연락처를 관리하고 그룹으로 분류하세요</p>
         </div>
         <div style={{ display: "flex", gap: 12 }}>
-          <button className="btn btn-secondary" onClick={() => setShowUploadModal(true)}>
-            📁 CSV 업로드
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              if (!can("csvUpload")) {
+                alert("CSV 업로드는 PRO 이상 플랜에서 사용할 수 있습니다.\n설정 → 요금제에서 업그레이드해 주세요.");
+                return;
+              }
+              setShowUploadModal(true);
+            }}
+            title={!can("csvUpload") ? "PRO 이상 플랜에서 사용 가능" : undefined}
+            style={!can("csvUpload") ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+          >
+            {!can("csvUpload") ? "🔒" : "📁"} CSV 업로드
           </button>
           <button
             className="btn btn-secondary"

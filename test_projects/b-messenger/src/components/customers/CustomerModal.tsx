@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createCustomer, updateCustomer } from "@/app/actions/customers";
+import { isValidKoreanPhone } from "@/lib/phoneUtils";
 import type { Customer, CustomerFormData } from "@/types";
 
 interface Props {
@@ -126,6 +127,10 @@ export default function CustomerModal({ open, onClose, editTarget, onSuccess }: 
     e.preventDefault();
     if (!form.name.trim()) { toast.error("이름을 입력해주세요"); return; }
     if (!form.phone.trim()) { toast.error("전화번호를 입력해주세요"); return; }
+    if (!isValidKoreanPhone(form.phone)) {
+      toast.error("올바른 전화번호 형식이 아닙니다. (예: 010-1234-5678)");
+      return;
+    }
 
     startTransition(async () => {
       const payload = { ...form };

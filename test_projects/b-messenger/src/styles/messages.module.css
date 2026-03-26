@@ -71,6 +71,14 @@
   color: var(--text-primary);
 }
 
+.channelLocked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.channelLocked:hover {
+  border-color: var(--border-primary);
+}
+
 .channelIcon {
   font-size: 18px;
 }
@@ -134,6 +142,33 @@
   border-radius: var(--radius-lg);
   padding: 24px;
   flex: 1;
+}
+
+.templatePickerRow {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.templatePicker {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  appearance: auto;
+}
+.templatePicker:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(var(--brand-primary-rgb, 99,102,241), 0.1);
+}
+.templatePicker:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
 }
 
 .variableHint {
@@ -398,6 +433,76 @@
 .progressSuccess { color: var(--success); }
 .progressFail { color: var(--error); }
 .progressPending { color: var(--text-muted); }
+
+/* 그룹 선택 체크박스 */
+.groupCheckbox {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--border-primary);
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: white;
+  transition: all 0.15s;
+  margin-right: 6px;
+}
+.groupCheckboxChecked {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+.groupCheckboxPartial {
+  background: rgba(102, 126, 234, 0.25);
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+  font-weight: 700;
+}
+
+/* 선택 현황 패널 */
+.selectedSummary {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(102, 126, 234, 0.07);
+  border: 1px solid rgba(102, 126, 234, 0.18);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+}
+.selectedGroupRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  color: var(--text-secondary);
+}
+.selectedGroupName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.selectedGroupCount {
+  flex-shrink: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.selectedGroupLoading {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.selectedTotalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 7px;
+  margin-top: 6px;
+  border-top: 1px solid rgba(102, 126, 234, 0.2);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-primary);
+}
 
 @media (max-width: 1200px) {
   .composer {

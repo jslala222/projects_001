@@ -1,4 +1,15 @@
 /**
+ * 한국 핸드폰 번호 유효성 검사
+ * - 010: 반드시 11자리 (010-XXXX-XXXX)
+ * - 011/016/017/018/019: 10 또는 11자리
+ */
+export function isValidKoreanPhone(phone: string): boolean {
+  const d = phone.replace(/\D/g, "");
+  if (d.startsWith("010")) return d.length === 11;
+  return /^01[16789]\d{7,8}$/.test(d);
+}
+
+/**
  * 전화번호 포맷팅 (01012345678 -> 010-1234-5678)
  */
 export function formatPhone(phone: string): string {

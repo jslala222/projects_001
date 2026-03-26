@@ -337,27 +337,57 @@ function MembersModal({
   const [members, setMembers] = useState<Customer[]>([]);
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [tab, setTab] = useState<"members" | "add">("members");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const [loaded, setLoaded] = useState(false);
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
   const [dupWarning, setDupWarning] = useState<{
     show: boolean;
     dups: { id: string; name: string; groups: string[] }[];
   }>({ show: false, dups: [] });
 
-  const load = (bookId?: string | null) => {
+  const load = (bookId?: string | null, searchTerm?: string) => {
     startTransition(async () => {
       const [m, c] = await Promise.all([
         getGroupMembers(group.id),
-        getCustomers({ pageSize: 2000, addressBookId: bookId ?? undefined }),
+        getCustomers({
+          pageSize: 50,
+          addressBookId: bookId ?? undefined,
+          search: searchTerm ?? "",
+        }),
       ]);
       setMembers((m.data ?? []) as Customer[]);
       setAllCustomers((c.data ?? []) as Customer[]);
       setLoaded(true);
+      setSearching(false);
     });
   };
+
+  // debounce: 검색어 입력 300ms 후 서버 요청
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    setSearching(true);
+    startTransition(async () => {
+      const c = await getCustomers({
+        pageSize: 50,
+        addressBookId: selectedBookId ?? undefined,
+        search: debouncedSearch,
+      });
+      setAllCustomers((c.data ?? []) as Customer[]);
+      setSearching(false);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
 
   useEffect(() => {
     load(null);
@@ -376,8 +406,9 @@ function MembersModal({
   }
 
   const memberIds = new Set(members.map((m) => m.id));
+  // 서버사이드 검색 결과에서 이미 멤버인 사람만 제외
   const candidates = allCustomers
-    .filter((c) => !memberIds.has(c.id) && (c.name.includes(search) || c.phone.includes(search)))
+    .filter((c) => !memberIds.has(c.id))
     .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 
   const handleRemove = (customerId: string) => {
@@ -430,10 +461,10 @@ function MembersModal({
 
   const handleBookTab = (bookId: string | null) => {
     setSelectedBookId(bookId);
-    setSelected(new Set());
     setSearch("");
+    setDebouncedSearch("");
     setLoaded(false);
-    load(bookId);
+    load(bookId, "");
   };
 
   return createPortal(
@@ -512,13 +543,15 @@ function MembersModal({
                   <Search size={14} className={styles.searchIcon} />
                   <input
                     className={styles.searchInput}
-                    placeholder="이름 또는 전화번호 검색"
+                    placeholder="이름 또는 전화번호 검색 (서버 검색)"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
+                  {searching && <span style={{ fontSize: 11, color: "#94a3b8", paddingRight: 8 }}>검색 중...</span>}
                 </div>
                 <div className={styles.memberList}>
-                  {candidates.length === 0 && <p className={styles.emptyState}>추가할 고객이 없습니다</p>}
+                  {!searching && candidates.length === 0 && <p className={styles.emptyState}>{search ? `'${search}' 검색 결과가 없습니다` : "추가할 고객이 없습니다"}</p>}
+                  {searching && <p className={styles.emptyState}>검색 중...</p>}
                   {candidates.map((c) => {
                     const pType = checkPhoneType(c.phone);
                     const existingGroups = (c.group_ids ?? [])
@@ -650,7 +683,7 @@ const PLAN_LIMITS: Record<string, number> = {
 
 /* ─────────────────── 트리 노드 (재귀) ─────────────────── */
 const DEPTH_LABELS = ["최상위", "대", "중", "소"];
-const DEPTH_COLORS = ["#6366f1", "#0ea5e9", "#22c55e", "#f59e0b"];
+const DEPTH_COLORS = ["#a78bfa", "#4ade80", "#fbbf24", "#f87171"];
 
 function GroupTreeNode({
   node,
@@ -677,7 +710,6 @@ function GroupTreeNode({
   const hasChildren = (node.children?.length ?? 0) > 0;
   const isExpanded = expandedIds.has(node.id);
   const depthLabel = DEPTH_LABELS[depth] ?? "소";
-  const depthColor = DEPTH_COLORS[depth] ?? "#94a3b8";
 
   return (
     <div className={depth === 0 ? styles.treeNodeWrapRoot : `${styles.treeNodeWrap} ${depth === 1 ? styles.treeNodeDepth1 : depth === 2 ? styles.treeNodeDepth2 : styles.treeNodeDepth3}`}>
@@ -685,12 +717,10 @@ function GroupTreeNode({
       <div
         className={`${styles.treeRow} ${depth === 0 ? styles.treeRowRoot : depth === 1 ? styles.treeRowDepth1 : depth === 2 ? styles.treeRowDepth2 : styles.treeRowDepth3}`}
         style={{
-          paddingLeft: `${12 + depth * 12}px`,
+          paddingLeft: "12px",
           minHeight: depth === 0 ? "80px" : depth === 1 ? "54px" : depth === 2 ? "44px" : "36px",
-          ...(depth > 0 ? { borderLeftColor: depthColor + "99" } : {}),
           ...(depth === 0 ? ({
             "--group-color-bar": getBarColor(node.color),
-            background: getBgTint(node.color),
           } as React.CSSProperties) : {}),
         }}
       >
@@ -715,7 +745,7 @@ function GroupTreeNode({
           {/* 깊이 배지 */}
           <span
             className={styles.treeDepthBadge}
-            style={{ backgroundColor: depthColor + "22", color: depthColor, borderColor: depthColor + "55" }}
+            data-depth={depth}
           >
             {depthLabel}
           </span>
@@ -923,7 +953,7 @@ export default function GroupsClient({
           <h1 className={styles.headerTitle}>
             <Users2 size={26} style={{ color: "var(--brand-primary)" }} />
             그룹 관리
-            <span className={styles.headerCount}>({groups.length}개)</span>
+            <span className={styles.headerCount}>( {groups.length} )</span>
           </h1>
           {maxGroups !== Infinity && (
             <div className={styles.progressWrap}>
@@ -1018,7 +1048,7 @@ export default function GroupsClient({
                 />
                 <span className={styles.panelItemName}>{root.name}</span>
                 <span className={styles.panelItemCount}>
-                  {root.children?.length ?? 0}개
+                  ( {root.children?.length ?? 0} )
                 </span>
               </button>
             ))}

@@ -7,6 +7,7 @@
 import { useState, useCallback } from "react";
 import DaumPostcode, { Address } from "react-daum-postcode";
 import { Contact, AddressBook } from "@/lib/store";
+import { isValidKoreanPhone } from "@/lib/phoneUtils";
 import styles from "@/styles/ContactAddModal.module.css";
 
 // ── 상수 ──
@@ -119,6 +120,10 @@ export default function ContactAddModal({
   async function handleSave() {
     if (!name.trim()) { setError("이름을 입력해주세요."); return; }
     if (!phone.trim()) { setError("전화번호를 입력해주세요."); return; }
+    if (!isValidKoreanPhone(phone)) {
+      setError("올바른 전화번호 형식이 아닙니다. (예: 010-1234-5678, 11자리)");
+      return;
+    }
     setSaving(true);
     setError("");
 

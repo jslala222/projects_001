@@ -300,8 +300,19 @@ export async function addCustomersToGroup(
   const userId = await getCurrentUserId();
   if (!userId) return { error: "로그인이 필요합니다" };
 
-  // 1차: group_members 조인 테이블에 당사자 bulk insert
-  const rows = customerIds.map((cid) => ({
+  // pre-filter: 이미 이 그룹 멤버인 고객 제외 (DB UNIQUE 제약 이중 방어)
+  const { data: existing } = await supabase
+    .from(TABLES.GROUP_MEMBERS)
+    .select("contact_id")
+    .eq("group_id", groupId)
+    .in("contact_id", customerIds);
+
+  const existingIds = new Set((existing ?? []).map((r) => r.contact_id as string));
+  const newIds = customerIds.filter((id) => !existingIds.has(id));
+  if (newIds.length === 0) return {};
+
+  // 1차: group_members 조인 테이블에 신규 고객만 bulk insert
+  const rows = newIds.map((cid) => ({
     tenant_id: userId,
     group_id: groupId,
     contact_id: cid,
@@ -317,7 +328,7 @@ export async function addCustomersToGroup(
   const { data: contacts } = await supabase
     .from(TABLES.CONTACTS)
     .select("id, group_ids")
-    .in("id", customerIds);
+    .in("id", newIds);
 
   if (contacts) {
     for (const c of contacts) {

@@ -1,146 +1,210 @@
 // ================================================================
-// messages/page.tsx — 메시지 작성 페이지 (핵심 화면!)
-// 채널 선택 + 메시지 편집기 + 폰 미리보기 + 발송
+// messages/page.tsx — 메시지 작성 페이지
+// 채널 선택 + 그룹 선택 + 메시지 편집기 + 폰 미리보기 + 실제 발송
 // ================================================================
 "use client";
 
 import { useState, useEffect } from "react";
-import { dataStore, Contact, Group } from "@/lib/store";
+import { getGroups, getGroupMembersForSend } from "@/app/actions/groups";
+import { sendToGroup, type GroupSendParams } from "@/app/actions/send";
+import { useTemplates } from "@/hooks/useTemplates";
+import { usePlan } from "@/hooks/usePlan";
+import { dataStore } from "@/lib/store";
+import type { Group, Customer } from "@/types";
 import styles from "@/styles/messages.module.css";
 
-const channels = [
-  { id: "kakao_alim", icon: "💬", label: "카카오 알림톡", desc: "인증된 템플릿 발송" },
-  { id: "kakao_friend", icon: "💛", label: "카카오 친구톡", desc: "친구에게 자유 발송" },
-  { id: "sms", icon: "📱", label: "SMS 문자", desc: "90바이트 이하 단문" },
-  { id: "mms", icon: "🖼️", label: "MMS 문자", desc: "이미지 포함 장문" },
+const CHANNELS = [
+  { id: "sms" as const,         icon: "📱", label: "SMS 문자",      desc: "90바이트 이하 단문" },
+  { id: "lms" as const,         icon: "📄", label: "LMS 문자",      desc: "장문 문자 (2000자)" },
+  { id: "kakao_friend" as const, icon: "💛", label: "카카오 친구톡", desc: "친구에게 자유 발송" },
+  { id: "kakao_alim" as const,  icon: "💬", label: "카카오 알림톡", desc: "인증된 템플릿 발송" },
 ];
 
+const DEPTH_COLORS = ["#a78bfa", "#4ade80", "#fbbf24", "#f87171"];
+
 export default function MessagesPage() {
-  const [selectedChannel, setSelectedChannel] = useState("kakao_friend");
-  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
-  const [onlyCustomers, setOnlyCustomers] = useState(false);
-  const [message, setMessage] = useState("#{이름}님 안녕하세요! 🌸\n\n3월 봄맞이 특별 할인 이벤트를 안내드립니다.\n\n전 품목 20% 할인 진행 중!\n지금 바로 확인해보세요 👇");
-  const [fallbackEnabled, setFallbackEnabled] = useState(true);
-  const [sendRate, setSendRate] = useState(300);
+  const { can } = usePlan();
+  const [channel, setChannel] = useState<"sms" | "lms" | "kakao_friend" | "kakao_alim">("sms");
+  const [message, setMessage] = useState("");
+  const [fallback, setFallback] = useState(true);
+
+  // 저장된 템플릿
+  const { templates: savedTemplates, loading: templatesLoading } = useTemplates(channel);
+
+  // 그룹 트리
   const [groups, setGroups] = useState<Group[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  // 체크된 리프 그룹 IDs + 멤버 캐시
+  const [checkedLeafs, setCheckedLeafs] = useState<Set<string>>(new Set());
+  const [memberCache, setMemberCache] = useState<Map<string, { members: Customer[]; loading: boolean }>>(new Map());
 
   // 발송 상태
-  const [isSending, setIsSending] = useState(false);
-  const [sendProgress, setSendProgress] = useState(0);
-  const [sendSuccess, setSendSuccess] = useState(0);
-  const [sendFail, setSendFail] = useState(0);
-  const [sendComplete, setSendComplete] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [showResult, setShowResult] = useState(false);
+  const [result, setResult] = useState<{
+    success: boolean;
+    successCount: number;
+    failCount: number;
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
-    async function load() {
-      const [g, c] = await Promise.all([dataStore.getGroups(), dataStore.getContacts()]);
-      setGroups(g);
-      setContacts(c);
+    async function loadGroups() {
+      setGroupsLoading(true);
+      const { data } = await getGroups();
+      if (data) setGroups(data);
+      setGroupsLoading(false);
     }
-    load();
+    loadGroups();
   }, []);
 
-  // 선택된 그룹 및 고객 여부에 따른 연락처 추출
-  const targetContacts = (() => {
-    let filtered = contacts;
-    
-    // 1. 고객 전용 필터 적용
-    if (onlyCustomers) {
-      filtered = filtered.filter(c => c.isCustomer);
+  // 자식이 있는지 여부
+  function hasChildren(groupId: string): boolean {
+    return groups.some(g => g.parent_id === groupId);
+  }
+
+  // 모든 부모가 열려 있어야 보임
+  function isVisible(group: Group): boolean {
+    if ((group.depth ?? 0) === 0) return true;
+    const parent = groups.find(g => g.id === group.parent_id);
+    if (!parent) return false;
+    return expandedGroups.has(parent.id) && isVisible(parent);
+  }
+
+  // ── 리프 그룹 계산 헬퍼 ───────────────────────────────────────
+  function getLeafDescendants(groupId: string): string[] {
+    const children = groups.filter(g => g.parent_id === groupId);
+    if (children.length === 0) return [groupId];
+    return children.flatMap(c => getLeafDescendants(c.id));
+  }
+
+  type CheckState = 'none' | 'partial' | 'all';
+  function getCheckState(groupId: string): CheckState {
+    const leaves = getLeafDescendants(groupId);
+    const n = leaves.filter(id => checkedLeafs.has(id)).length;
+    if (n === 0) return 'none';
+    if (n === leaves.length) return 'all';
+    return 'partial';
+  }
+
+  // 멤버 캐시 fetch (리프 단위)
+  async function fetchGroupMembers(groupId: string) {
+    if (memberCache.get(groupId)?.loading) return;
+    setMemberCache(prev => {
+      const next = new Map(prev);
+      next.set(groupId, { members: prev.get(groupId)?.members ?? [], loading: true });
+      return next;
+    });
+    const { data } = await getGroupMembersForSend(groupId);
+    setMemberCache(prev => {
+      const next = new Map(prev);
+      next.set(groupId, { members: data ?? [], loading: false });
+      return next;
+    });
+  }
+
+  // 체크박스 클릭 (3단계 토글)
+  function handleCheckClick(e: React.MouseEvent, group: Group) {
+    e.stopPropagation();
+    const leaves = getLeafDescendants(group.id);
+    const state = getCheckState(group.id);
+    if (state === 'all') {
+      setCheckedLeafs(prev => {
+        const next = new Set(prev);
+        leaves.forEach(id => next.delete(id));
+        return next;
+      });
+    } else {
+      const toAdd = leaves.filter(id => !checkedLeafs.has(id));
+      setCheckedLeafs(prev => {
+        const next = new Set(prev);
+        toAdd.forEach(id => next.add(id));
+        return next;
+      });
+      toAdd.forEach(id => fetchGroupMembers(id));
     }
-    
-    // 2. 그룹 필터 적용 (그룹이 하나라도 선택된 경우)
-    if (selectedGroups.length > 0) {
-      filtered = filtered.filter(c => c.groupIds.some(g => selectedGroups.includes(g)));
+  }
+
+  // 중복 제거된 전체 멤버 (phone 기준)
+  const allMembers = (() => {
+    const seen = new Set<string>();
+    const result: Customer[] = [];
+    for (const id of checkedLeafs) {
+      const cache = memberCache.get(id);
+      if (!cache || cache.loading) continue;
+      for (const m of cache.members) {
+        if (!seen.has(m.phone)) {
+          seen.add(m.phone);
+          result.push(m);
+        }
+      }
     }
-    
-    return filtered;
+    return result;
   })();
+  const anyLoading = [...checkedLeafs].some(id => memberCache.get(id)?.loading);
 
   // 변수 치환 미리보기
-  function getPreviewMessage() {
-    let preview = message;
-    // targetContacts가 있으면 그 중 첫 번째 사람, 없으면 전체 contacts 중 첫 번째 사람을 샘플로 사용
-    const sampleContact = targetContacts.length > 0 ? targetContacts[0] : contacts[0];
-    
-    if (sampleContact) {
-      preview = preview.replace(/#{이름}/g, sampleContact.name);
-      preview = preview.replace(/#{메모}/g, sampleContact.memo || "");
-      preview = preview.replace(/#{전화번호}/g, sampleContact.phone);
-    } else {
-      preview = preview.replace(/#{이름}/g, "홍길동");
-      preview = preview.replace(/#{메모}/g, "메모 내용");
-      preview = preview.replace(/#{전화번호}/g, "010-0000-0000");
-    }
-    
-    // 공통 변수 (샘플 데이터)
-    preview = preview.replace(/#{주문번호}/g, "ORD-20260320");
-    preview = preview.replace(/#{금액}/g, "59,000");
-    preview = preview.replace(/#{운송장번호}/g, "123456789");
-    
-    return preview;
+  function getPreview() {
+    const sample = allMembers[0];
+    return message
+      .replace(/#{이름}/g, sample?.name ?? "홍길동")
+      .replace(/#{전화번호}/g, sample?.phone ?? "010-0000-0000")
+      .replace(/#{메모}/g, sample?.memo ?? "메모")
+      .replace(/#{주문번호}/g, "ORD-20260320")
+      .replace(/#{금액}/g, "59,000");
   }
 
   // 글자 수 계산
   const byteLength = new TextEncoder().encode(message).length;
-  const isOverSMS = selectedChannel === "sms" && byteLength > 90;
+  const isOverSMS = channel === "sms" && byteLength > 90;
 
-  function toggleGroup(groupId: string) {
-    setSelectedGroups(prev =>
-      prev.includes(groupId) ? prev.filter(id => id !== groupId) : [...prev, groupId]
-    );
-  }
+  const isKakao = channel.startsWith("kakao");
 
-  // 발송 시작
+  // 발송 실행
   async function handleSend() {
-    if (targetContacts.length === 0) {
-      alert("발송할 대상이 없습니다.");
+    if (checkedLeafs.size === 0) {
+      alert("발송할 그룹을 선택하세요.");
+      return;
+    }
+    if (allMembers.length === 0) {
+      alert("선택한 그룹에 멤버가 없습니다.");
+      return;
+    }
+    if (!message.trim()) {
+      alert("메시지를 입력하세요.");
       return;
     }
 
-    setIsSending(true);
-    setSendProgress(0);
-    setSendSuccess(0);
-    setSendFail(0);
-    setSendComplete(false);
+    setSending(true);
+    setShowResult(true);
+    setResult(null);
 
-    const campaign = await dataStore.addCampaign({
-      name: `${new Date().toLocaleDateString("ko-KR")} 발송`,
-      channel: selectedChannel,
-      message: message,
-      status: "draft",
-      totalCount: targetContacts.length,
-      successCount: 0,
-      failCount: 0,
-      sendRate: sendRate,
-      fallbackEnabled: fallbackEnabled,
-    });
+    const [firstGroupId] = checkedLeafs;
+    const groupName = [...checkedLeafs].map(id => groups.find(g => g.id === id)?.name ?? id).join(", ");
 
-    if (!campaign) {
-      alert("캔페인 생성에 실패했습니다.");
-      setIsSending(false);
-      return;
-    }
+    // 클라이언트에서 API 설정 읽기 (Server Action RLS 세션 문제 방지)
+    const apiSettingsList = await dataStore.getApiSettings();
+    const apiSetting = apiSettingsList.find(s => s.provider === "solapi" && s.apiKey && s.apiSecret)
+      ?? apiSettingsList[0];
 
-    await dataStore.simulateSend(
-      campaign.id,
-      targetContacts,
-      (progress, success, fail) => {
-        setSendProgress(progress);
-        setSendSuccess(success);
-        setSendFail(fail);
-      }
-    );
+    const params: GroupSendParams = {
+      groupId: firstGroupId,
+      groupName,
+      channel,
+      message,
+      fallback: fallback && isKakao,
+      apiKey: apiSetting?.apiKey,
+      apiSecret: apiSetting?.apiSecret,
+      senderNumber: apiSetting?.senderNumber,
+      kakaoChannelId: apiSetting?.kakaoChannelId ?? undefined,
+    };
 
-    setSendComplete(true);
+    const res = await sendToGroup(params, allMembers);
+    setResult(res);
+    setSending(false);
   }
-
-  function handleTestSend() {
-    alert(`✅ 테스트 발송 완료!\n\n채널: ${channels.find(c => c.id === selectedChannel)?.label}\n메시지: ${getPreviewMessage().substring(0, 50)}...\n\n(시뮬레이션 - 실제 발송되지 않습니다)`);
-  }
-
-  const isKakao = selectedChannel.startsWith("kakao");
 
   return (
     <div className={styles.messagePage}>
@@ -160,56 +224,126 @@ export default function MessagesPage() {
           <div className={styles.panel}>
             <div className={styles.panelTitle}>📌 발송 채널</div>
             <div className={styles.channelList}>
-              {channels.map((ch) => (
-                <button
-                  key={ch.id}
-                  className={`${styles.channelOption} ${selectedChannel === ch.id ? styles.channelActive : ""}`}
-                  onClick={() => setSelectedChannel(ch.id)}
-                >
-                  <span className={styles.channelIcon}>{ch.icon}</span>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{ch.label}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{ch.desc}</div>
-                  </div>
-                </button>
-              ))}
+              {CHANNELS.map((ch) => {
+                const isKakao = ch.id.startsWith("kakao");
+                const locked = isKakao && !can("kakaoChannels");
+                return (
+                  <button
+                    key={ch.id}
+                    className={`${styles.channelOption} ${channel === ch.id ? styles.channelActive : ""} ${locked ? styles.channelLocked : ""}`}
+                    onClick={() => {
+                      if (locked) {
+                        alert("카카오 채널은 PRO 이상 플랜에서 사용할 수 있습니다.\n요금제 페이지에서 업그레이드해 주세요.");
+                        return;
+                      }
+                      setChannel(ch.id);
+                    }}
+                    title={locked ? "PRO 이상 플랜에서 사용 가능" : undefined}
+                  >
+                    <span className={styles.channelIcon}>{locked ? "🔒" : ch.icon}</span>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>
+                        {ch.label}
+                        {locked && <span style={{ fontSize: 10, color: "var(--text-muted)", marginLeft: 4 }}>PRO+</span>}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{ch.desc}</div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* 수신 대상 */}
+          {/* 수신 대상 — 그룹 다중 선택 */}
           <div className={styles.panel}>
-            <div className={styles.panelTitle}>📋 수신 대상 ({targetContacts.length}명)</div>
-            <div className={styles.groupList}>
-              <button
-                className={`${styles.groupOption} ${(!onlyCustomers && selectedGroups.length === 0) ? styles.groupActive : ""}`}
-                onClick={() => { setOnlyCustomers(false); setSelectedGroups([]); }}
-              >
-                <span className={styles.groupDot} style={{ background: "var(--text-muted)" }} />
-                전체 연락처
-                <span className={styles.groupCount}>{contacts.length}</span>
-              </button>
-
-              <button
-                className={`${styles.groupOption} ${onlyCustomers ? styles.groupActive : ""}`}
-                onClick={() => setOnlyCustomers(!onlyCustomers)}
-                style={onlyCustomers ? { border: "1px solid var(--brand-primary)", background: "rgba(102, 126, 234, 0.1)" } : {}}
-              >
-                <span className={styles.groupDot} style={{ background: "#FFD700" }} />
-                💎 등록된 고객만
-                <span className={styles.groupCount}>{contacts.filter(c => c.isCustomer).length}</span>
-              </button>
-              {groups.map((g) => (
-                <button
-                  key={g.id}
-                  className={`${styles.groupOption} ${selectedGroups.includes(g.id) ? styles.groupActive : ""}`}
-                  onClick={() => toggleGroup(g.id)}
-                >
-                  <span className={styles.groupDot} style={{ background: g.color }} />
-                  {g.name}
-                  <span className={styles.groupCount}>{g.contactCount}</span>
-                </button>
-              ))}
+            <div className={styles.panelTitle}>
+              📋 수신 대상
+              {anyLoading && (
+                <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 6 }}>집계 중...</span>
+              )}
             </div>
+            <div className={styles.groupList} style={{ gap: 1 }}>
+              {groupsLoading ? (
+                <p style={{ color: "var(--text-muted)", fontSize: 13, padding: "8px 0" }}>로딩 중...</p>
+              ) : groups.length === 0 ? (
+                <p style={{ color: "var(--text-muted)", fontSize: 13, padding: "8px 0" }}>그룹이 없습니다</p>
+              ) : (
+                groups.filter(g => isVisible(g)).map((g) => {
+                  const depth = g.depth ?? 0;
+                  const depthColor = DEPTH_COLORS[depth] ?? DEPTH_COLORS[0];
+                  const checkState = getCheckState(g.id);
+                  const _hasChildren = hasChildren(g.id);
+                  const leafLoading = !_hasChildren && memberCache.get(g.id)?.loading;
+                  return (
+                    <button
+                      key={g.id}
+                      className={`${styles.groupOption} ${checkState !== 'none' ? styles.groupActive : ""}`}
+                      style={{
+                        paddingLeft: 10 + depth * 16,
+                        paddingTop: 7,
+                        paddingBottom: 7,
+                        borderLeft: depth > 0
+                          ? `2px solid ${depthColor}55`
+                          : "2px solid transparent",
+                        fontWeight: _hasChildren ? 600 : 400,
+                      }}
+                      onClick={() => {
+                        if (_hasChildren) {
+                          setExpandedGroups(prev => {
+                            const next = new Set(prev);
+                            next.has(g.id) ? next.delete(g.id) : next.add(g.id);
+                            return next;
+                          });
+                        }
+                      }}
+                    >
+                      {/* 체크박스 — 클릭 독립 */}
+                      <span
+                        className={`${styles.groupCheckbox} ${
+                          checkState === 'all' ? styles.groupCheckboxChecked :
+                          checkState === 'partial' ? styles.groupCheckboxPartial : ""
+                        }`}
+                        onClick={(e) => handleCheckClick(e, g)}
+                      >
+                        {checkState === 'all' ? "✓" : checkState === 'partial' ? "−" : ""}
+                      </span>
+                      <span className={styles.groupDot} style={{ background: depthColor }} />
+                      {g.name}
+                      <span className={styles.groupCount}>
+                        {leafLoading ? "…" : (g.member_count ?? 0)}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            {/* 선택 현황 패널 */}
+            {checkedLeafs.size > 0 && (
+              <div className={styles.selectedSummary}>
+                {[...checkedLeafs].map(id => {
+                  const g = groups.find(gr => gr.id === id);
+                  const cache = memberCache.get(id);
+                  return (
+                    <div key={id} className={styles.selectedGroupRow}>
+                      <span className={styles.selectedGroupName}>• {g?.name ?? id}</span>
+                      {cache?.loading
+                        ? <span className={styles.selectedGroupLoading}>집계 중...</span>
+                        : <span className={styles.selectedGroupCount}>{cache?.members.length ?? 0}명</span>
+                      }
+                    </div>
+                  );
+                })}
+                {checkedLeafs.size > 1 && (
+                  <div className={styles.selectedTotalRow}>
+                    <span>합계 (중복제거)</span>
+                    <span style={{ color: "var(--brand-primary)" }}>
+                      {anyLoading ? "…" : `${allMembers.length}명`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -218,10 +352,31 @@ export default function MessagesPage() {
           <div className={styles.editorCard}>
             <div className={styles.panelTitle}>💬 메시지 내용</div>
 
+            {/* 저장된 템플릿 불러오기 */}
+            <div className={styles.templatePickerRow}>
+              <select
+                className={styles.templatePicker}
+                defaultValue=""
+                disabled={templatesLoading}
+                onChange={(e) => {
+                  const selected = savedTemplates.find(t => t.id === e.target.value);
+                  if (selected) setMessage(selected.content);
+                  e.target.value = "";
+                }}
+              >
+                <option value="" disabled>
+                  {templatesLoading ? "템플릿 불러오는 중…" : savedTemplates.length === 0 ? "저장된 템플릿 없음" : "📂 저장된 템플릿 불러오기"}
+                </option>
+                {savedTemplates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+
             {/* 변수 힌트 */}
             <div className={styles.variableHint}>
               💡 변수 삽입:
-              {["이름", "주문번호", "금액", "메모"].map((v) => (
+              {["이름", "전화번호", "메모", "금액"].map((v) => (
                 <span
                   key={v}
                   className={styles.variableTag}
@@ -244,7 +399,7 @@ export default function MessagesPage() {
             {/* 글자 수 */}
             <div className={`${styles.charCount} ${isOverSMS ? styles.charOver : ""}`}>
               {byteLength} 바이트
-              {selectedChannel === "sms" && ` / 90 바이트`}
+              {channel === "sms" && ` / 90 바이트`}
               {isOverSMS && " ⚠️ SMS 한도 초과 (LMS 전환 필요)"}
             </div>
 
@@ -253,35 +408,31 @@ export default function MessagesPage() {
               <div className={styles.optionRow}>
                 <span className={styles.optionLabel}>🔄 카카오 실패 시 문자 자동 전환</span>
                 <div
-                  className={`${styles.toggle} ${fallbackEnabled ? styles.active : ""}`}
-                  onClick={() => setFallbackEnabled(!fallbackEnabled)}
-                  style={fallbackEnabled ? { background: "var(--brand-primary)", borderColor: "var(--brand-primary)" } : {}}
+                  className={`${styles.toggle} ${fallback ? styles.active : ""}`}
+                  onClick={() => setFallback(!fallback)}
+                  style={fallback ? { background: "var(--brand-primary)", borderColor: "var(--brand-primary)" } : {}}
                 >
-                  <div className={styles.toggleDot} style={fallbackEnabled ? { transform: "translateX(20px)" } : {}} />
+                  <div
+                    className={styles.toggleDot}
+                    style={fallback ? { transform: "translateX(20px)" } : {}}
+                  />
                 </div>
-              </div>
-              <div className={styles.optionRow}>
-                <span className={styles.optionLabel}>🏎️ 발송 속도 (분당 {sendRate}건)</span>
-                <input
-                  type="range"
-                  min={50}
-                  max={500}
-                  step={50}
-                  value={sendRate}
-                  onChange={(e) => setSendRate(Number(e.target.value))}
-                  style={{ width: 120, accentColor: "var(--brand-primary)" }}
-                />
               </div>
             </div>
           </div>
 
           {/* 발송 버튼 */}
           <div className={styles.sendActions}>
-            <button className="btn btn-secondary btn-lg" onClick={handleTestSend}>
-              🧪 테스트 발송
-            </button>
-            <button className="btn btn-primary btn-lg" onClick={handleSend}>
-              🚀 {targetContacts.length}명에게 발송하기
+            <button
+              className="btn btn-primary btn-lg"
+              onClick={handleSend}
+              disabled={checkedLeafs.size === 0 || anyLoading || sending}
+            >
+              🚀 {checkedLeafs.size === 0
+                ? "그룹을 선택하세요"
+                : anyLoading
+                  ? "인원 집계 중..."
+                  : `${allMembers.length}명에게 발송하기`}
             </button>
           </div>
         </div>
@@ -300,10 +451,10 @@ export default function MessagesPage() {
                 </div>
                 <div className={styles.phoneBody}>
                   <div className={`${styles.messageBubble} ${isKakao ? styles.messageBubbleKakao : ""}`}>
-                    {getPreviewMessage().split("\n").map((line, i) => (
+                    {getPreview().split("\n").map((line, i, arr) => (
                       <span key={i}>
                         {line}
-                        {i < getPreviewMessage().split("\n").length - 1 && <br />}
+                        {i < arr.length - 1 && <br />}
                       </span>
                     ))}
                     {isKakao && (
@@ -322,19 +473,19 @@ export default function MessagesPage() {
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <span>채널</span>
                 <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-                  {channels.find(c => c.id === selectedChannel)?.label}
+                  {CHANNELS.find(c => c.id === channel)?.label}
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <span>수신자</span>
                 <span style={{ fontWeight: 600, color: "var(--brand-primary)" }}>
-                  {targetContacts.length}명 {onlyCustomers && "(⭐ 고객 전용)"}
+                  {anyLoading ? "집계 중..." : checkedLeafs.size > 0 ? `${allMembers.length}명` : "미선택"}
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span>폴백</span>
-                <span style={{ fontWeight: 600, color: fallbackEnabled ? "var(--success)" : "var(--text-muted)" }}>
-                  {fallbackEnabled ? "✅ 활성" : "비활성"}
+                <span style={{ fontWeight: 600, color: fallback ? "var(--success)" : "var(--text-muted)" }}>
+                  {fallback ? "✅ 활성" : "비활성"}
                 </span>
               </div>
             </div>
@@ -342,60 +493,57 @@ export default function MessagesPage() {
         </div>
       </div>
 
-      {/* 발송 진행 모달 */}
-      {isSending && (
+      {/* 발송 결과 모달 */}
+      {showResult && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: 480 }}>
+          <div className="modal-content" style={{ maxWidth: 440 }}>
             <div className={styles.progressModal}>
-              <div className={styles.progressTitle}>
-                {sendComplete ? "🎉 발송 완료!" : "🚀 대량 발송 진행 중..."}
-              </div>
-
-              <div className={styles.progressBarLarge}>
-                <div
-                  className={styles.progressFillLarge}
-                  style={{ width: `${sendProgress}%` }}
-                />
-              </div>
-
-              <div style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>
-                {Math.round(sendProgress)}%
-              </div>
-
-              <div className={styles.progressStats}>
-                <div className={styles.progressStat}>
-                  <div className={`${styles.progressStatValue} ${styles.progressSuccess}`}>{sendSuccess}</div>
-                  <div className={styles.progressStatLabel}>✅ 성공</div>
-                </div>
-                <div className={styles.progressStat}>
-                  <div className={`${styles.progressStatValue} ${styles.progressFail}`}>{sendFail}</div>
-                  <div className={styles.progressStatLabel}>❌ 실패</div>
-                </div>
-                <div className={styles.progressStat}>
-                  <div className={`${styles.progressStatValue} ${styles.progressPending}`}>
-                    {targetContacts.length - sendSuccess - sendFail}
+              {sending ? (
+                <>
+                  <div className={styles.progressTitle}>🚀 발송 중...</div>
+                  <div className={styles.progressBarLarge}>
+                    <div className={styles.progressFillLarge} style={{ width: "60%", animationName: "pulse" }} />
                   </div>
-                  <div className={styles.progressStatLabel}>⏳ 대기</div>
-                </div>
-              </div>
-
-              {/* 실시간 치환 샘플 (최종 수신자 1인 기준) */}
-              <div style={{ marginTop: 20, textAlign: "left", fontSize: 13, background: "rgba(255,255,255,0.05)", padding: 12, borderRadius: 8, border: "1px solid var(--border-primary)" }}>
-                <div style={{ color: "var(--text-muted)", marginBottom: 8, fontSize: 11 }}>📝 첫 번째 수신자 발송 예시 ({targetContacts[0]?.name || "없음"})</div>
-                <div style={{ color: "var(--text-primary)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
-                  {getPreviewMessage()}
-                </div>
-              </div>
-
-              {sendComplete && (
-                <button
-                  className="btn btn-primary btn-lg"
-                  style={{ width: "100%" }}
-                  onClick={() => { setIsSending(false); setSendComplete(false); }}
-                >
-                  확인
-                </button>
-              )}
+                  <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 12 }}>
+                    {[...checkedLeafs].map(id => groups.find(g => g.id === id)?.name ?? id).join(", ")} · {allMembers.length.toLocaleString()}명
+                  </p>
+                </>
+              ) : result ? (
+                <>
+                  <div style={{ fontSize: 40 }}>{result.success ? "🎉" : "❌"}</div>
+                  <div className={styles.progressTitle}>
+                    {result.success ? "발송 완료!" : "발송 실패"}
+                  </div>
+                  {result.success && (
+                    <div className={styles.progressStats}>
+                      <div className={styles.progressStat}>
+                        <div className={`${styles.progressStatValue} ${styles.progressSuccess}`}>
+                          {result.successCount}
+                        </div>
+                        <div className={styles.progressStatLabel}>✅ 성공</div>
+                      </div>
+                      <div className={styles.progressStat}>
+                        <div className={`${styles.progressStatValue} ${styles.progressFail}`}>
+                          {result.failCount}
+                        </div>
+                        <div className={styles.progressStatLabel}>❌ 실패</div>
+                      </div>
+                    </div>
+                  )}
+                  {result.error && (
+                    <p style={{ color: "var(--error)", fontSize: 13, textAlign: "center", margin: "8px 0" }}>
+                      {result.error}
+                    </p>
+                  )}
+                  <button
+                    className="btn btn-primary btn-lg"
+                    style={{ width: "100%", marginTop: 16 }}
+                    onClick={() => { setShowResult(false); setResult(null); }}
+                  >
+                    확인
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
         </div>

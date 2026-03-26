@@ -8,6 +8,7 @@ import { useState, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
 import { dataStore, Contact, AddressBook } from "@/lib/store";
 import { usePlan } from "@/hooks/usePlan";
+import { isValidKoreanPhone } from "@/lib/phoneUtils";
 import styles from "@/styles/CSVUploadModal.module.css";
 
 // ── 헤더 자동 매핑 규칙 ──
@@ -250,6 +251,7 @@ export default function CSVUploadModal({
       const name = row[colIndex(nameCol)]?.trim();
       const phone = normalizePhone(row[colIndex(phoneCol)] || "");
       if (!name || !phone) { skip++; continue; }
+      if (!isValidKoreanPhone(phone)) { skip++; continue; }
 
       const get = (field: keyof ParsedRow) => {
         const col = Object.entries(mappedFields).find(([, v]) => v === field)?.[0];
